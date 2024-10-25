@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  # service1:
+  #   image: flask-service1-image  # Replace with the Docker image for your first Flask service
+  #   ports:
+  #     - "5001:5000"  # Maps the container's port 5000 to host port 5001
+  #   environment:
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     - redis
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
