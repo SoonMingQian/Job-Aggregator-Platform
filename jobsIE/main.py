@@ -2,21 +2,22 @@ from playwright.sync_api import sync_playwright
 from redis import Redis
 from datetime import datetime
 import uuid
+from flask import Flask, request, jsonify
 
-def init_redis():
-    try:
-        redis_client = Redis(
-            host='localhost',
-            port=6379,
-            decode_responses=True
-        )
-        # Test connection
-        redis_client.ping()
-        return redis_client
-    except Exception as e:
-        print(f"Failed to connect to Redis: {e}")
-        return None
+app = Flask(__name__)
+
+@app.route('/jobie', methods=['GET'])
+def jobie():
+    job_type = request.args.get('job_type')
+    job_location = request.args.get('job_location')
+
+    if not job_type or not job_location:
+        return jsonify({"error": "Missing job_type or job_location parameter"}), 400
+
+    # Run the job search
+    results = run(job_type, job_location)
     
+    return jsonify(results)
 
 def run(job_type, job_location):
     redis_client = init_redis()
@@ -87,13 +88,27 @@ def get_number_of_pages(page):
         print(f"Error while getting the number of pages: {e}")
         return 0
 
-    
 def cookies(page):
     try:
         page.wait_for_selector('#ccmgt_explicit_accept', timeout=1500)
         page.locator('#ccmgt_explicit_accept').click()
     except Exception as e:
         print(f"Button not found or not clickable: {e}")
+
+""" Redis functions """
+def init_redis():
+    try:
+        redis_client = Redis(
+            host='localhost',
+            port=6379,
+            decode_responses=True
+        )
+        # Test connection
+        redis_client.ping()
+        return redis_client
+    except Exception as e:
+        print(f"Failed to connect to Redis: {e}")
+        return None
 
 def generate_job_id(job_data):
     # Create unique identifier using company name and job title
@@ -121,7 +136,6 @@ def get_cached_results(redis_client, job_type, job_location):
         return jobs
     return None
 
-
 def store_job_listing(redis_client, job_data, job_type, job_location):
     try:
         # Generate unique job key
@@ -145,4 +159,3 @@ def close(browser):
         continue
 
     browser.close()
-run("part time", "dublin")
