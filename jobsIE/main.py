@@ -155,7 +155,4 @@ def store_job_listing(redis_client, job_data, job_type, job_location):
         return None
 
 def close(browser):
-    while True:
-        continue
-
     browser.close()
