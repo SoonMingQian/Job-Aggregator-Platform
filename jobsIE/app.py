@@ -8,36 +8,36 @@ app = Flask(__name__)
 
 @app.route('/jobie', methods=['GET'])
 def jobie():
-    job_type = request.args.get('job_type')
+    job_title = request.args.get('job_title')
     job_location = request.args.get('job_location')
 
-    if not job_type or not job_location:
-        return jsonify({"error": "Missing job_type or job_location parameter"}), 400
+    if not job_title or not job_location:
+        return jsonify({"error": "Missing job_title or job_location parameter"}), 400
 
     # Run the job search
-    results = run(job_type, job_location)
+    results = run(job_title, job_location)
     
     return jsonify(results)
 
-def run(job_type, job_location):
+def run(job_title, job_location):
     redis_client = init_redis()
 
-    cached_results = get_cached_results(redis_client, job_type, job_location)
+    cached_results = get_cached_results(redis_client, job_title, job_location)
     if cached_results:
         print("Using cached results")
         return cached_results
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto("https://www.jobs.ie/")
-        search_jobs(redis_client, page, browser, job_type, job_location)
+        search_jobs(redis_client, page, browser, job_title, job_location)
 
-def search_jobs(redis_client, page, browser, job_type, job_location):
+def search_jobs(redis_client, page, browser, job_title, job_location):
     cookies(page)
     # Search for jobs
     page.wait_for_selector('#stepstone-autocomplete-150')
-    page.locator('#stepstone-autocomplete-150').fill(job_type)
+    page.locator('#stepstone-autocomplete-150').fill(job_title)
     page.locator('#stepstone-autocomplete-155').fill(job_location)
     page.locator('button.sbr-18wqljt').click()
 
@@ -65,7 +65,7 @@ def search_jobs(redis_client, page, browser, job_type, job_location):
 
             print(job_data)
 
-            store_job_listing(redis_client, job_data, job_type, job_location)
+            store_job_listing(redis_client, job_data, job_title, job_location)
         
         if page_number < number_of_pages:
             try:
@@ -117,12 +117,12 @@ def generate_job_id(job_data):
     job_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
     return f"job:{job_id}"
 
-def generate_cache_key(job_type, job_location):
+def generate_cache_key(job_title, job_location):
     # Result: "search:part time:dublin"
-    return f"search:{job_type.lower()}:{job_location.lower()}"
+    return f"search:{job_title.lower()}:{job_location.lower()}"
 
-def get_cached_results(redis_client, job_type, job_location):
-    cache_key = generate_cache_key(job_type, job_location)
+def get_cached_results(redis_client, job_title, job_location):
+    cache_key = generate_cache_key(job_title, job_location)
     # smembers returns a set of all the values in the set
     cached_jobs = redis_client.smembers(cache_key)
 
@@ -136,14 +136,14 @@ def get_cached_results(redis_client, job_type, job_location):
         return jobs
     return None
 
-def store_job_listing(redis_client, job_data, job_type, job_location):
+def store_job_listing(redis_client, job_data, job_title, job_location):
     try:
         # Generate unique job key
         job_key = generate_job_id(job_data)
 
         redis_client.hmset(job_key, job_data)
 
-        cache_key = generate_cache_key(job_type, job_location)
+        cache_key = generate_cache_key(job_title, job_location)
         redis_client.sadd(cache_key, job_key)
 
         redis_client.expire(job_key, 86400)  # Expire in 24 hours
