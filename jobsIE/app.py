@@ -119,7 +119,7 @@ def generate_job_id(job_data):
 
 def generate_cache_key(job_title, job_location):
     # Result: "search:part time:dublin"
-    return f"search:{job_title.lower()}:{job_location.lower()}"
+    return f"search:{job_title.lower()}:{job_location.lower()}:jobsIE"
 
 def get_cached_results(redis_client, job_title, job_location):
     cache_key = generate_cache_key(job_title, job_location)
