@@ -1,6 +1,8 @@
 import asyncio
 from playwright.async_api import async_playwright
 from flask import Flask, request, jsonify
+import redis.asyncio as redis
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -14,7 +16,7 @@ def indeed():
 
     # Run the job search
     results = asyncio.run(main(job_title, job_location))
-    
+    print("Done Scraping")
     return jsonify(results)
 
 async def check_pages(job_title, job_location, browser):
@@ -37,19 +39,19 @@ async def check_pages(job_title, job_location, browser):
         await page.close()
         await context.close()
 
-async def get_jobs(page):
+async def get_jobs(redis_client, page, job_title, job_location):
     try:
         await page.wait_for_selector('a.jcs-JobTitle')
         job_links = page.locator('a.jcs-JobTitle')
         count = await job_links.count()
-        
-        for i in range(count):
-            job_link = job_links.nth(i)
+        print(f"Generating cache key in get_jobs: {job_title}, Job Location: {job_location}")
+        for job in range(count):
+            job_link = job_links.nth(job)
             await job_link.click()
-            await page.wait_for_selector('div.jobsearch-ViewJobLayout--embedded')
+            await page.wait_for_selector('div.jobsearch-ViewJobLayout--embedded') 
             
-            job_title = await page.locator('h2.jobsearch-JobInfoHeader-title').text_content()
-            # company = await page.locator('span.css-1saizt3 e1wnkr790 > a').text_content()
+            
+            title = await page.locator('h2.jobsearch-JobInfoHeader-title').text_content()
             company = await page.locator('a.css-1ioi40n.e19afand0').text_content()
             if '.c' in company:
                 company = company.split('.c')[0]
@@ -79,28 +81,39 @@ async def get_jobs(page):
             except:
                 apply_link = f'https://ie.indeed.com/viewjob?jk={job_id}'          
             
-            print(f"Job ID: {job_id}")
-            print(f"Job Title: {job_title}")
-            print(f"Company: {company}")
-            print(f"Company Link: {company_link}")
-            print(f"Location: {location}")
-            print(f"Work Mode: {work_mode}")
-            print(f"Apply Link: {apply_link}")
-            print(f"Job Description: {job_description}")
-            
+            job_data = {
+                'job_id': job_id,
+                'title': title,
+                'company': company,
+                'company_link': company_link,
+                'location': location,
+                'work_mode': work_mode,
+                'apply_link': apply_link,
+                'job_description': job_description,
+            }
+
+            print(job_data)
+            await store_job_listing(redis_client, job_data, job_title, job_location)
+ 
     except Exception as e:
         print(f"Error in get_jobs: {e}")
 
-async def scrape_job_data(job_title, job_location, start, browser):
+async def scrape_job_data(redis_client, job_title, job_location, start, browser):
     context = await browser.new_context(user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
     page = await context.new_page()
     url = f"https://ie.indeed.com/jobs?q={job_title}&l={job_location}&start={start}"
     await page.goto(url)
-    await get_jobs(page)
+    print(f"Generating cache key in scrape_job_data: {job_title}, Job Location: {job_location}")
+    await get_jobs(redis_client, page, job_title, job_location)
     await page.close()
     await context.close()
     
 async def main(job_title, job_location):
+    redis_client = await init_redis()
+    cached_results = await get_cached_results(redis_client, job_title, job_location)
+    if cached_results:
+        print("Using cached results")
+        return cached_results
     
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
@@ -111,11 +124,11 @@ async def main(job_title, job_location):
         last_page_number = await check_pages(job_title, job_location, browser)
         
         if last_page_number == 1:
-            await scrape_job_data(job_title, job_location, 0, browser)
+            await scrape_job_data(redis_client, job_title, job_location, 0, browser)
         else:
             tasks = []
             for start in range(0, last_page_number * 10, 10):
-                task = asyncio.create_task(scrape_job_data(job_title, job_location, start, browser))
+                task = asyncio.create_task(scrape_job_data(redis_client, job_title, job_location, start, browser))
                 tasks.append(task)
             await asyncio.gather(*tasks)
         
@@ -125,5 +138,46 @@ def close_browser(browser):
     print('No page anymore')
     browser.close()
 
-if __name__ == "__main__":
-    asyncio.run(main())
+"""Redis functions"""
+async def init_redis():
+    try:
+        redis_client = await redis.from_url('redis://localhost:6379', encoding='utf-8', decode_responses=True)
+        return redis_client
+    except Exception as e:
+        print(f"Failed to connect to Redis: {e}")
+        return None
+
+async def generate_cache_key(job_title, job_location):
+    print(f"Generating cache key for Job Title: {job_title}, Job Location: {job_location}")
+    return f"search:{job_title.lower()}:{job_location.lower()}:indeed"
+
+async def get_cached_results(redis_client, job_title, job_location):
+    cache_key = await generate_cache_key(job_title, job_location)
+    print(f"Cache Key: {cache_key}")
+    cached_jobs = await redis_client.smembers(cache_key)
+
+    if cached_jobs:
+        jobs = []
+        for job_key in cached_jobs:
+            job_data = await redis_client.hgetall(job_key)
+            if job_data:
+                jobs.append(job_data)
+        print(jobs)
+        return jobs
+    return None
+
+async def store_job_listing(redis_client, job_data, job_title, job_location):
+    try:
+        job_key = job_data['job_id']
+        await redis_client.hmset(job_key, job_data)
+        cache_key = await generate_cache_key(job_title, job_location)
+        print(f"Storing job with key: {job_key} in cache key: {cache_key}")
+        await redis_client.sadd(cache_key, job_key)
+
+        await redis_client.expire(job_key, 86400)  # Expire in 24 hours
+        await redis_client.expire(cache_key, 86400)  # Expire in 24 hours
+
+        return job_key
+    except Exception as e:
+        print(f"Error while storing job listing: {e}")
+        return None
