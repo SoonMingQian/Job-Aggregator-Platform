@@ -28,8 +28,9 @@ def run(job_title, job_location):
         return cached_results
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        browser = p.chromium.launch(headless=True, args=['--disable-blink-features=AutomationControlled'])
+        context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+        page = context.new_page()
         page.goto("https://www.jobs.ie/")
         search_jobs(redis_client, page, browser, job_title, job_location)
 
@@ -50,7 +51,12 @@ def search_jobs(redis_client, page, browser, job_title, job_location):
         page.wait_for_selector('article.res-ezkvph')
         count = job_listings.count()
         print(count)
-    
+
+        page.wait_for_selector('a[data-testid="job-item-title"]') 
+        page.wait_for_selector('span[data-at="job-item-company-name"]')
+        page.wait_for_selector('span[data-at="job-item-location"]')
+        page.wait_for_selector('div[data-at="jobcard-content"]')  
+       
         # Get job details
         for job in range(count):
             job_listing = job_listings.nth(job)
@@ -59,7 +65,7 @@ def search_jobs(redis_client, page, browser, job_title, job_location):
                 'apply_link': job_listing.locator('a[data-testid="job-item-title"]').get_attribute('href'),
                 'company': job_listing.locator('span[data-at="job-item-company-name"]').text_content(),
                 'location': job_listing.locator('span[data-at="job-item-location"]').text_content(),
-                'content': job_listing.locator('div[data-at="jobcard-content"]').text_content(),
+                'content': " ".join([el.text_content() for el in job_listing.locator('div[data-at="jobcard-content"]').all()]),
                 'timestamp': datetime.now().isoformat()
             }
 
@@ -67,6 +73,10 @@ def search_jobs(redis_client, page, browser, job_title, job_location):
 
             store_job_listing(redis_client, job_data, job_title, job_location)
         
+        print(f"Page {page_number} done")
+        
+     
+            
         if page_number < number_of_pages:
             try:
                 next_button = page.locator('a[aria-label="Next"]')
