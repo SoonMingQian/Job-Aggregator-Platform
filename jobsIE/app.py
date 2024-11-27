@@ -3,8 +3,16 @@ from redis import Redis
 from datetime import datetime
 import uuid
 from flask import Flask, request, jsonify
+from kafka import KafkaProducer
+import json
 
 app = Flask(__name__)
+
+# Iniitialize Kafka producer
+producer = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 
 @app.route('/jobie', methods=['GET'])
 def jobie():
@@ -68,6 +76,12 @@ def search_jobs(redis_client, page, browser, job_title, job_location):
                 'content': " ".join([el.text_content() for el in job_listing.locator('div[data-at="jobcard-content"]').all()]),
                 'timestamp': datetime.now().isoformat()
             }
+
+            job_id = generate_job_id(job_data)
+            job_data['job_id'] = job_id
+
+            producer.send('analysis', value={'job_id': job_id, 'job_description': job_data['content']})
+            producer.flush()
 
             print(job_data)
 
@@ -149,7 +163,7 @@ def get_cached_results(redis_client, job_title, job_location):
 def store_job_listing(redis_client, job_data, job_title, job_location):
     try:
         # Generate unique job key
-        job_key = generate_job_id(job_data)
+        job_key = job_data['job_id']
 
         redis_client.hmset(job_key, job_data)
 
