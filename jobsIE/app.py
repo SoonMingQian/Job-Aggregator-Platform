@@ -79,14 +79,13 @@ def search_jobs(redis_client, page, browser, job_title, job_location):
 
             job_id = generate_job_id(job_data)
             job_data['job_id'] = job_id
-
-            producer.send('analysis', value={'job_id': job_id, 'job_description': job_data['content']})
-            producer.flush()
-
+            
             print(job_data)
 
             store_job_listing(redis_client, job_data, job_title, job_location)
-        
+            producer.send('analysis', value={'job_id': job_id, 'job_description': job_data['content']})
+            producer.flush()
+
         print(f"Page {page_number} done")
         
      
