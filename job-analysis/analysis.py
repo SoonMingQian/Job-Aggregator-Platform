@@ -68,8 +68,8 @@ def extract_skills(text, max_length=512):
 print("Waiting for messages...")
 for message in consumer:
     job_data = message.value
-    job_id = job_data['job_id']
-    job_description = job_data['job_description']
+    job_id = job_data['jobId']
+    job_description = job_data['jobDescription']
     
     # Extract skills from the job description
     extracted_skills = extract_skills(job_description)
