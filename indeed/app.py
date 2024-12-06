@@ -104,18 +104,18 @@ async def get_jobs(redis_client, page, job_title, job_location):
             print(job_data)
             await store_job_listing(redis_client, job_data, job_title, job_location)
             await process_job(job_data)
- 
+            print("--------------------------job done---------------------------")
     except Exception as e:
         print(f"Error in get_jobs: {e}")
 
 async def process_job(job_data):
     try:
-        job_id = job_data['job_id']
-        job_description = job_data['job_description']
+        job_id = job_data['jobId']
+        job_description = job_data['jobDescription']
         print(f"Processing job ID: {job_id}")
         producer.send('analysis', value={
-            'job_id': job_id, 
-            'job_description': job_description
+            'jobId': job_id, 
+            'jobDescription': job_description
         })
         producer.flush()
         print(f"Successfully sent job {job_id} to Kafka")
@@ -161,6 +161,8 @@ async def main(job_title, job_location):
 
 def close_browser(browser):
     print('No page anymore')
+    while True:
+        continue
     browser.close()
 
 """Redis functions"""
@@ -193,7 +195,7 @@ async def get_cached_results(redis_client, job_title, job_location):
 
 async def store_job_listing(redis_client, job_data, job_title, job_location):
     try:
-        job_key = job_data['job_id']
+        job_key = job_data['jobId']
         await redis_client.hmset(job_key, job_data)
         cache_key = await generate_cache_key(job_title, job_location)
         print(f"Storing job with key: {job_key} in cache key: {cache_key}")
