@@ -63,12 +63,12 @@ async def get_jobs(redis_client, page, job_title, job_location):
             company = await page.locator('a.css-1ioi40n.e19afand0').text_content()
             if '.c' in company:
                 company = company.split('.c')[0]
-            company_link = await page.locator('a.css-1ioi40n.e19afand0').get_attribute('href')
+            # company_link = await page.locator('a.css-1ioi40n.e19afand0').get_attribute('href')
             location_div = await page.locator('div[data-testid="inlineHeader-companyLocation"] > div').text_content()
             
             location_parts = location_div.split('•')
             location = location_parts[0].strip()
-            work_mode = location_parts[1].strip() if len(location_parts) > 1 else 'N/A'
+            # work_mode = location_parts[1].strip() if len(location_parts) > 1 else 'N/A'
             
             job_id = await job_link.get_attribute('data-jk')
 
@@ -90,23 +90,38 @@ async def get_jobs(redis_client, page, job_title, job_location):
                 apply_link = f'https://ie.indeed.com/viewjob?jk={job_id}'          
             
             job_data = {
-                'job_id': job_id,
+                'jobId': job_id,
                 'title': title,
                 'company': company,
-                'company_link': company_link,
+                # 'company_link': company_link,
                 'location': location,
-                'work_mode': work_mode,
-                'apply_link': apply_link,
-                'job_description': job_description,
+                # 'work_mode': work_mode,
+                'applyLink': apply_link,
+                'jobDescription': job_description,
+                'timestamp': datetime.now().isoformat()
             }
 
             print(job_data)
             await store_job_listing(redis_client, job_data, job_title, job_location)
-            producer.send('analysis', value={'job_id': job_data['job_id'], 'job_description': job_data['content']})
-            producer.flush()
+            await process_job(job_data)
  
     except Exception as e:
         print(f"Error in get_jobs: {e}")
+
+async def process_job(job_data):
+    try:
+        job_id = job_data['job_id']
+        job_description = job_data['job_description']
+        print(f"Processing job ID: {job_id}")
+        producer.send('analysis', value={
+            'job_id': job_id, 
+            'job_description': job_description
+        })
+        producer.flush()
+        print(f"Successfully sent job {job_id} to Kafka")
+    except Exception as e:
+        print(f"Error in process_job: {e}")
+        raise
 
 async def scrape_job_data(redis_client, job_title, job_location, start, browser):
     context = await browser.new_context(user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
@@ -127,7 +142,7 @@ async def main(job_title, job_location):
     
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
-            headless=True,
+            headless=False,
             args=['--disable-blink-features=AutomationControlled']  # Disable headless detection
         )
         

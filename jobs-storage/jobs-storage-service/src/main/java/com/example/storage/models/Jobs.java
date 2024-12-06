@@ -1,5 +1,7 @@
 package com.example.storage.models;
 
+import java.util.Date;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -19,6 +21,9 @@ public class Jobs {
 	
 	@Lob 
 	private String jobDescription;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date timestamp;
 
 	public String getJobId() {
 		return jobId;
@@ -67,6 +72,12 @@ public class Jobs {
 	public void setJobDescription(String jobDescription) {
 		this.jobDescription = jobDescription;
 	}
-	
-	
+
+	public Date getTimestamp() {
+		return timestamp;
+	}
+
+	public void setTimestamp(Date timestamp) {
+		this.timestamp = timestamp;
+	}
 }
