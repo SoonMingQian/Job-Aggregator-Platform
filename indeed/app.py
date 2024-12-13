@@ -184,19 +184,27 @@ async def generate_cache_key(job_title, job_location):
     return f"search:{job_title.lower()}:{job_location.lower()}:indeed"
 
 async def get_cached_results(redis_client, job_title, job_location):
-    cache_key = await generate_cache_key(job_title, job_location)
-    print(f"Cache Key: {cache_key}")
-    cached_jobs = await redis_client.smembers(cache_key)
+    try:
+        cache_key = await generate_cache_key(job_title, job_location)
+        print(f"Cache Key: {cache_key}")
+        cached_jobs = await redis_client.smembers(cache_key)
 
-    if cached_jobs:
-        jobs = []
-        for job_key in cached_jobs:
-            job_data = await redis_client.hgetall(job_key)
-            if job_data:
-                jobs.append(job_data)
-        print(jobs)
-        return jobs
-    return None
+        if cached_jobs:
+            jobs = []
+            for job_key in cached_jobs:
+                job_data = await redis_client.hgetall(job_key)
+                if job_data:
+                    # Get skills from this job
+                    skills_key = f"job:{job_key}:skills"
+                    skills = await redis_client.smembers(skills_key)
+                    job_data['skills'] = list(skills) if skills else []
+                    jobs.append(job_data)
+            print(jobs)
+            return jobs
+        return None
+    except Exception as e:
+        print(f"Error getting cached results: {e}")
+        return None
 
 async def store_job_listing(redis_client, job_data, job_title, job_location):
     try:

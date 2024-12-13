@@ -2,6 +2,14 @@ from json import dumps
 import json
 from kafka import KafkaConsumer, KafkaProducer
 from transformers import pipeline, AutoTokenizer
+from redis import Redis
+
+# Initialize Redis client
+redis_client = Redis(
+    host='localhost',
+    port=6379,
+    decode_responses=True
+)
 
 # Initialize Kafka consumer
 consumer = KafkaConsumer(
@@ -52,6 +60,20 @@ def extract_skills(text, max_length=512):
     
     return skills_set
 
+def store_skills(jobId, skills):
+    try: 
+        skills_key = f"job:{jobId}:skills"
+
+        # Store the skills in Redis
+        redis_client.delete(skills_key)
+        if skills:
+            redis_client.sadd(skills_key, *skills)
+            redis_client.expire(skills_key, 86400)  # Expire in 24 hours
+        
+        print(f"Stored skills for {jobId}: {skills}")
+    except Exception as e:
+        print(f"Error storing skills in Redis: {e}")
+
 print("Waiting for messages...")
 for message in consumer:
     job_data = message.value
@@ -60,6 +82,8 @@ for message in consumer:
     
     # Extract skills from the job description
     extracted_skills = extract_skills(jobDescription)
+
+    store_skills(jobId, extracted_skills)
     skills_message = {
         'jobId': jobId,
         'skills': list(extracted_skills)

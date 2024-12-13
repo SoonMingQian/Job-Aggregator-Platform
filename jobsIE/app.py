@@ -160,6 +160,10 @@ def get_cached_results(redis_client, title, job_location):
         for job_key in cached_jobs:
             job_data = redis_client.hgetall(job_key)
             if job_data:
+                #Get skills from this job
+                skills_key = f"job:{job_key}:skills"
+                skills = redis_client.smembers(skills_key)
+                job_data['skills'] = list(skills) if skills else []
                 jobs.append(job_data)
         print(jobs)
         return jobs
