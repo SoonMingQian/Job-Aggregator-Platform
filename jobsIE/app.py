@@ -88,7 +88,7 @@ def search_jobs(redis_client, page, browser, title, job_location):
             print(job_data)
 
             store_job_listing(redis_client, job_data, title, job_location)
-            producerAnalysis.send('analysis', value={'job_id': job_id, 'job_description': job_data['jobDescription']})
+            producerAnalysis.send('analysis', value={'jobId': job_id, 'jobDescription': job_data['jobDescription']})
             producerAnalysis.flush()
 
             producerStorage.send('storage', value=job_data)
@@ -168,7 +168,7 @@ def get_cached_results(redis_client, title, job_location):
 def store_job_listing(redis_client, job_data, title, job_location):
     try:
         # Generate unique job key
-        job_key = job_data['job_id']
+        job_key = job_data['jobId']
 
         redis_client.hmset(job_key, job_data)
 
