@@ -7,5 +7,5 @@ import com.example.storage.models.Jobs;
 
 @Repository
 public interface JobsRepository extends JpaRepository<Jobs, String>{
-
+	Jobs findByJobId(String jobId);
 }

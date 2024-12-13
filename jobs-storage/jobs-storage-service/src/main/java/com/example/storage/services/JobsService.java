@@ -1,5 +1,8 @@
 package com.example.storage.services;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,4 +18,12 @@ public class JobsService {
 	public Jobs saveJobs(Jobs jobs) {
 		return jobsRepository.save(jobs);
 	}
+	
+	public Optional<Jobs> findJobById(String jobId) {
+		return jobsRepository.findById(jobId);
+	}
+	
+	public List<Jobs> findAllJobs() {
+        return jobsRepository.findAll();
+    }
 }

@@ -1,6 +1,8 @@
 package com.example.storage.models;
 
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import jakarta.persistence.*;
 
@@ -24,6 +26,11 @@ public class Jobs {
 	
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date timestamp;
+	
+	@ElementCollection
+	@CollectionTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"))
+    @Column(name = "skill")
+	private Set<String> skills = new HashSet<>();
 
 	public String getJobId() {
 		return jobId;
@@ -80,4 +87,14 @@ public class Jobs {
 	public void setTimestamp(Date timestamp) {
 		this.timestamp = timestamp;
 	}
+
+	public Set<String> getSkills() {
+		return skills;
+	}
+
+	public void setSkills(Set<String> skills) {
+		this.skills = skills;
+	}
+	
+	
 }
