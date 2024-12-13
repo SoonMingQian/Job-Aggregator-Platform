@@ -9,7 +9,12 @@ import json
 app = Flask(__name__)
 
 # Iniitialize Kafka producer
-producer = KafkaProducer(
+producerAnalysis = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+
+producerStorage = KafkaProducer(
     bootstrap_servers='localhost:9092',
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
@@ -113,11 +118,11 @@ async def process_job(job_data):
         job_id = job_data['jobId']
         job_description = job_data['jobDescription']
         print(f"Processing job ID: {job_id}")
-        producer.send('analysis', value={
+        producerAnalysis.send('analysis', value={
             'jobId': job_id, 
             'jobDescription': job_description
         })
-        producer.flush()
+        producerAnalysis.flush()
         print(f"Successfully sent job {job_id} to Kafka")
     except Exception as e:
         print(f"Error in process_job: {e}")
