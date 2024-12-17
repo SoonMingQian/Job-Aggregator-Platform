@@ -60,17 +60,18 @@ def extract_skills(text, max_length=512):
     
     return skills_set
 
-def store_skills(jobId, skills):
+def store_skills(jobId, skills, source):
     try: 
-        skills_key = f"job:{jobId}:skills"
+        skills_key = f"{source}:{jobId}:skills"
 
         # Store the skills in Redis
         redis_client.delete(skills_key)
         if skills:
             redis_client.sadd(skills_key, *skills)
-            redis_client.expire(skills_key, 86400)  # Expire in 24 hours
+            if source == 'job':
+                redis_client.expire(skills_key, 86400)  # Expire in 24 hours
         
-        print(f"Stored skills for {jobId}: {skills}")
+        print(f"Stored {source} skills for {jobId}: {skills}")
     except Exception as e:
         print(f"Error storing skills in Redis: {e}")
 
@@ -79,21 +80,23 @@ for message in consumer:
     job_data = message.value
     jobId = job_data['jobId']
     jobDescription = job_data['jobDescription']
-    
+    source = job_data.get('source', 'job') # Default to 'job' if source not specified
     # Extract skills from the job description
     extracted_skills = extract_skills(jobDescription)
 
-    store_skills(jobId, extracted_skills)
-    skills_message = {
-        'jobId': jobId,
-        'skills': list(extracted_skills)
-    }
+    store_skills(jobId, extracted_skills, source)
 
-    json_message = json.dumps(skills_message)
+    if source == 'job':
+        skills_message = {
+            'jobId': jobId,
+            'skills': list(extracted_skills)
+        }
 
-    # Log the message being sent
-    print(f"Sending extracted skills for job {jobId} to Kafka: {skills_message}")
-    producerSkills.send('skill', value=json_message)
-    producerSkills.flush()
-    print(f"Sent extracted skills for job {jobId} to Kafka")
+        json_message = json.dumps(skills_message)
+
+        # Log the message being sent
+        print(f"Sending extracted skills for job {jobId} to Kafka: {skills_message}")
+        producerSkills.send('skill', value=json_message)
+        producerSkills.flush()
+        print(f"Sent extracted skills for job {jobId} to Kafka")
 
