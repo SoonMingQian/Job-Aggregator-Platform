@@ -1,13 +1,19 @@
 package com.example.user.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.hibernate.annotations.UuidGenerator;
+
+import jakarta.persistence.*;
 
 @Entity
 public class User {
 
 	@Id 
+	@GeneratedValue
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false)
 	private String id;
 	
 	private String firstName;
@@ -18,6 +24,24 @@ public class User {
 	private String email;
 	
 	private String password;
+	
+	@ManyToMany(fetch = FetchType.LAZY)
+	@JoinTable(  name = "user_roles", 
+	     joinColumns = @JoinColumn(name = "user_id"), 
+	     inverseJoinColumns = @JoinColumn(name = "role_id"))
+	private Set<Role> roles = new HashSet<>();
+	
+	public User() {
+		super();
+	}
+	
+	public User(String firstName, String lastName, String email, String password) {
+		super();
+		this.firstName = firstName;
+		this.lastName = lastName;
+		this.email = email;
+		this.password = password;
+	}
 
 	public String getId() {
 		return id;
@@ -58,5 +82,12 @@ public class User {
 	public void setPassword(String password) {
 		this.password = password;
 	}
-	
+
+	public Set<Role> getRoles() {
+		return roles;
+	}
+
+	public void setRoles(Set<Role> roles) {
+		this.roles = roles;
+	}
 }
