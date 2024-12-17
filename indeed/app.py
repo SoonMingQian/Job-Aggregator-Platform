@@ -5,6 +5,7 @@ import redis.asyncio as redis
 from datetime import datetime
 from kafka import KafkaProducer
 import json
+import os
 
 app = Flask(__name__)
 
@@ -221,3 +222,8 @@ async def store_job_listing(redis_client, job_data, job_title, job_location):
     except Exception as e:
         print(f"Error while storing job listing: {e}")
         return None
+    
+if __name__ == '__main__':
+    os.environ['FLASK_DEBUG'] = '1'  # Replace FLASK_ENV
+    os.environ['FLASK_APP'] = 'app.py'
+    app.run(host='0.0.0.0', debug=True, port=3001)  # Indeed scraper port

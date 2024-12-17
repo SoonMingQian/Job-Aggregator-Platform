@@ -5,6 +5,7 @@ import uuid
 from flask import Flask, request, jsonify
 from kafka import KafkaProducer
 import json
+import os
 
 app = Flask(__name__)
 
@@ -189,3 +190,9 @@ def store_job_listing(redis_client, job_data, title, job_location):
 
 def close(browser):
     browser.close()
+
+if __name__ == '__main__':
+   # Set Flask environment variables
+    os.environ['FLASK_DEBUG'] = '1'  # Replace FLASK_ENV
+    os.environ['FLASK_APP'] = 'app.py'
+    app.run(host='0.0.0.0', debug=True, port=3002)
