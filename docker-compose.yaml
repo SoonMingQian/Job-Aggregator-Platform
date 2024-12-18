@@ -1,22 +1,112 @@
 version: '3.8'
 
 services:
-  # service1:
-  #   image: flask-service1-image  # Replace with the Docker image for your first Flask service
-  #   ports:
-  #     - "5001:5000"  # Maps the container's port 5000 to host port 5001
-  #   environment:
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #   depends_on:
-  #     - redis
-
   redis:
     image: redis:latest
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    networks:
+      - app-network
+
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/data
+    networks:
+      - app-network
+
+  kafka:
+    image: wurstmeister/kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/kafka
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "analysis:1:1,storage:1:1,skills:1:1"
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+    networks:
+      - app-network
+
+  user-service:
+    build: ./user-management-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/users
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    networks:
+      - app-network
+
+  job-storage:
+    build: ./jobs-storage/jobs-storage-service
+    ports:
+      - "8080:8080" 
+    depends_on:
+      - kafka
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/users
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    networks:
+      - app-network
+
+  indeed-scraper:
+    build: ./indeed
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    networks:
+      - app-network
+
+  jobsie-scraper:
+    build: ./jobsIE
+    ports:
+      - "3002:3002"
+    depends_on:
+      - redis
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    networks:
+      - app-network
+
+  job-analysis:
+    build: ./job-analysis
+    ports:
+      - "5000:5000"
+    depends_on:
+      - kafka
+      - redis
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   redis-data:
+  kafka-data:    # Add Kafka volume if you need message persistence
+  zookeeper-data:  # Add Zookeeper volume if you need configuration persistence
