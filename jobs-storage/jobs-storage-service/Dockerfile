@@ -1,14 +1,13 @@
-# Use an official OpenJDK runtime as a parent image
-FROM openjdk:21-jdk-slim
-
-# Set the working directory in the container
+# Build stage
+FROM maven:3.9.6-eclipse-temurin-21-jammy AS build
 WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Copy the project's build output to the container
-COPY target/jobs-storage-service-0.0.1-SNAPSHOT.jar app.jar
-
-# Expose the port the application runs on
+# Runtime stage
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+COPY --from=build /app/target/jobs-storage-service-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-
-# Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

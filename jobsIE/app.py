@@ -7,18 +7,28 @@ from kafka import KafkaProducer
 import json
 import os
 
+import time
+from kafka.errors import NoBrokersAvailable
+
 app = Flask(__name__)
 
-# Iniitialize Kafka producer
-producerAnalysis = KafkaProducer(
-    bootstrap_servers='localhost:9092',
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+def create_kafka_producer(retries=5):
+    for attempt in range(retries):
+        try:
+            return KafkaProducer(
+                bootstrap_servers='kafka:9092',
+                value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            )
+        except NoBrokersAvailable:
+            if attempt < retries - 1:
+                print(f"Failed to connect to Kafka. Retrying in 5 seconds... (Attempt {attempt + 1}/{retries})")
+                time.sleep(5)
+            else:
+                raise
 
-producerStorage = KafkaProducer(
-    bootstrap_servers='localhost:9092',
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+# Initialize Kafka producers with retry mechanism
+producerAnalysis = create_kafka_producer()
+producerStorage = create_kafka_producer()
 
 @app.route('/jobie', methods=['GET'])
 def jobie():
@@ -129,7 +139,7 @@ def cookies(page):
 def init_redis():
     try:
         redis_client = Redis(
-            host='localhost',
+            host='redis',
             port=6379,
             decode_responses=True
         )

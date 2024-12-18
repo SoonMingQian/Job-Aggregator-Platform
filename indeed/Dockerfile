@@ -1,17 +1,23 @@
 FROM python:3.9-slim
 
-# Set the working directory
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt /app/
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
-COPY . /app/
+# Install Playwright and its dependencies
+RUN pip install playwright
+RUN playwright install-deps
+RUN playwright install
 
-# Expose the port the app runs on
+COPY . .
+
 EXPOSE 3001
 
-# Command to run the application
-CMD ["python", "app.py"]
+ENV FLASK_APP=app.py
+
+# Add healthcheck script
+COPY wait_for_kafka.py .
+RUN chmod +x wait_for_kafka.py
+
+CMD ["python", "wait_for_kafka.py"]

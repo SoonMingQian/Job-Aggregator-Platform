@@ -5,14 +5,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright and its dependencies
-RUN pip install playwright
-RUN playwright install-deps
-RUN playwright install
-
 COPY . .
 
-EXPOSE 3002
+EXPOSE 5000
 
 ENV FLASK_APP=app.py
 

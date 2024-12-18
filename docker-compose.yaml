@@ -28,35 +28,84 @@ services:
     volumes:
       - kafka-data:/kafka
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CREATE_TOPICS: "analysis:1:1,storage:1:1,skills:1:1"
-      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CREATE_TOPICS: "analysis:1:1,storage:1:1,skill:1:1"
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --list --bootstrap-server localhost:9092"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  mysql-jobs-storage:
+    image: mysql:latest
+    environment:
+      MYSQL_DATABASE: jobs
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-jobs-storage-data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+  mysql-user-management:
+    image: mysql:latest
+    environment:
+      MYSQL_DATABASE: users
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-user-management-data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   user-service:
     build: ./user-management-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user-management:3306/users
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "8081:8081"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/users
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+    depends_on:
+      mysql-user-management:
+        condition: service_healthy
     networks:
       - app-network
 
-  job-storage:
+  jobs-storage-service:
     build: ./jobs-storage/jobs-storage-service
-    ports:
-      - "8080:8080" 
-    depends_on:
-      - kafka
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3306/users
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-jobs-storage:3306/jobs
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "8080:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mysql-jobs-storage:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -67,10 +116,6 @@ services:
     depends_on:
       - redis
       - kafka
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
     networks:
       - app-network
 
@@ -81,24 +126,24 @@ services:
     depends_on:
       - redis
       - kafka
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
     networks:
       - app-network
 
-  job-analysis:
-    build: ./job-analysis
+  text-processing:
+    build: ./text-processing
     ports:
       - "5000:5000"
     depends_on:
       - kafka
       - redis
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+    networks:
+      - app-network
+
+  ai-skills-extraction:
+    build: ./ai-skills-extraction
+    depends_on:
+      - kafka
+      - redis
     networks:
       - app-network
 
@@ -108,5 +153,7 @@ networks:
 
 volumes:
   redis-data:
-  kafka-data:    # Add Kafka volume if you need message persistence
-  zookeeper-data:  # Add Zookeeper volume if you need configuration persistence
+  kafka-data:   
+  zookeeper-data:  
+  mysql-jobs-storage-data:
+  mysql-user-management-data:
