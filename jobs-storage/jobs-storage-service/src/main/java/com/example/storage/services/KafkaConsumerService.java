@@ -17,6 +17,12 @@ public class KafkaConsumerService {
 	@Autowired
 	private JobsService jobsService;
 	
+	@Autowired
+	private SkillCleaningService skillCleaningService;
+	
+	@Autowired
+	private RedisService redisService;
+	
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
 	@KafkaListener(topics = "storage", groupId = "${spring.kafka.consumer.group-id}")
@@ -53,9 +59,15 @@ public class KafkaConsumerService {
                 }
             });
             
+            Set<String> cleanedSkills = skillCleaningService.cleanSkills(skills);
+            
+            // Store in mysql
             jobsService.findJobById(jobId).ifPresent(job -> {
-                job.setSkills(skills);
+                job.setSkills(cleanedSkills);
                 jobsService.saveJobs(job);
+               
+            // Store in redis
+            redisService.storeSkills(jobId, cleanedSkills, "job");
             });
         } catch (Exception e) {
             System.err.println("Error processing skills message: " + e.getMessage());
