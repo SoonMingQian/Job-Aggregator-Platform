@@ -99,6 +99,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-jobs-storage:3306/jobs
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
     ports:
       - "8080:8080"
     depends_on:
@@ -106,6 +108,22 @@ services:
         condition: service_healthy
       mysql-jobs-storage:
         condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+
+  matching-service:
+    build: ./matching-service
+    environment:
+      SERVER_PORT: 8082
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    ports:
+      - "8082:8082"
+    depends_on:
+      redis:
+        condition: service_started
     networks:
       - app-network
 

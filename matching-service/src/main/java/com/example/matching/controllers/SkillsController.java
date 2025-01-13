@@ -26,7 +26,7 @@ public class SkillsController {
 	
 	@GetMapping("/job/{jobId}")
     public ResponseEntity<Set<String>> getSkillsByJobId(@PathVariable String jobId) {
-        String key = "job:job:" + jobId + ":skills";
+        String key = "job:" + jobId + ":skills";
         if (!redisService.hasKey(key)) {
             return ResponseEntity.notFound().build();
         }
@@ -43,4 +43,25 @@ public class SkillsController {
         Set<String> skills = redisService.getUserSkills(userId);
         return ResponseEntity.ok(skills);
 	}	
+	
+	 @GetMapping("/jobs")
+	    public ResponseEntity<Set<String>> searchJobs(
+	            @RequestParam String title,
+	            @RequestParam String location) {
+	        
+	        try {
+	            // Get combined job IDs from both search keys
+	            Set<String> jobIds = redisService.getJobIdFromSearchKey(title, location);
+	            
+	            if (jobIds.isEmpty()) {
+	                return ResponseEntity.ok().body(jobIds);
+	            }
+
+	            return ResponseEntity.ok(jobIds);
+
+	        } catch (Exception e) {
+	            return ResponseEntity.badRequest()
+	                .body(null);
+	        }
+	    }
 }

@@ -25,6 +25,10 @@ public class KafkaConsumerService {
 	
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
+    private String cleanJobId(String jobId) {
+        return jobId.startsWith("job:") ? jobId.substring(4) : jobId;
+    }
+
 	@KafkaListener(topics = "storage", groupId = "${spring.kafka.consumer.group-id}")
 	public void consumeJobs(String message) {
 		try {
@@ -44,7 +48,9 @@ public class KafkaConsumerService {
             message = message.replace("\\\"", "\"");
             
             JsonNode rootNode = objectMapper.readTree(message);
+            String source = rootNode.path("source").asText();
             String jobId = rootNode.path("jobId").asText();
+            String cleanedJobId = cleanJobId(jobId);
             JsonNode skillsNode = rootNode.path("skills");
             
             if (jobId.isEmpty()) {
@@ -61,14 +67,16 @@ public class KafkaConsumerService {
             
             Set<String> cleanedSkills = skillCleaningService.cleanSkills(skills);
             
-            // Store in mysql
-            jobsService.findJobById(jobId).ifPresent(job -> {
-                job.setSkills(cleanedSkills);
-                jobsService.saveJobs(job);
-               
             // Store in redis
-            redisService.storeSkills(jobId, cleanedSkills, "job");
-            });
+            redisService.storeSkills(cleanedJobId, cleanedSkills, source);
+            
+            // Store in mysql
+            if ("job".equals(source)) {
+            	jobsService.findJobById(cleanedJobId).ifPresent(job -> {
+                    job.setSkills(cleanedSkills);
+                    jobsService.saveJobs(job);
+                });
+            }      
         } catch (Exception e) {
             System.err.println("Error processing skills message: " + e.getMessage());
         }

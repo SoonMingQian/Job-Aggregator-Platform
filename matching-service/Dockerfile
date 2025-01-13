@@ -8,6 +8,6 @@ RUN mvn clean package -DskipTests
 # Runtime stage
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY --from=build /app/target/user-management-service-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8081
+COPY --from=build /app/target/matching-service-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 8082
 ENTRYPOINT ["java", "-jar", "app.jar"]

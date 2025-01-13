@@ -63,19 +63,19 @@ def start_analysis():
         # Extract skills from the job description
         extracted_skills = extract_skills(jobDescription)
 
-        if source == 'job':
-            skills_message = {
-                'jobId': jobId,
-                'skills': list(extracted_skills)
-            }
+        skills_message = {
+            'source': source,
+            'jobId': jobId,
+            'skills': list(extracted_skills)
+        }
 
-            json_message = json.dumps(skills_message)
+        json_message = json.dumps(skills_message)
 
-            # Log the message being sent
-            print(f"Sending extracted skills for job {jobId} to Kafka: {skills_message}")
-            producerSkills.send('skill', value=json_message)
-            producerSkills.flush()
-            print(f"Sent extracted skills for job {jobId} to Kafka")
+        # Log the message being sent
+        print(f"Sending extracted skills for job {jobId} to Kafka: {skills_message}")
+        producerSkills.send('skill', value=json_message)
+        producerSkills.flush()
+        print(f"Sent extracted skills for job {jobId} to Kafka")
 
 if __name__ == "__main__":
     start_analysis()

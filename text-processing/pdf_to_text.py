@@ -64,12 +64,15 @@ def extract_text():
 def send_text_to_analysis(message):
     # Restructure message to match job format but with CV identifier
     analysis_message = {
-        'jobId': f"cv_{message['userId']}", # Prefix with cv_ to differentiate
+        'jobId': message['userId'], # Prefix with cv_ to differentiate
         'jobDescription': message['text'],
         'source': 'cv'
     }
+
+    print(f"Sending text to analysis: {analysis_message}")
     producerText.send('analysis', value=analysis_message)
     producerText.flush()
+    print("Text sent to analysis")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
