@@ -14,13 +14,14 @@ public class RedisService {
     private RedisTemplate<String, String> redisTemplate;
     
     public Set<String> getJobSkills(String jobId) {
-        String key = "job:job:" + jobId + ":skills";
+    	String cleanJobId = jobId.startsWith("job:") ? jobId.substring(4) : jobId;
+        String key = "job:" + cleanJobId + ":skills";
         Set<String> members = redisTemplate.opsForSet().members(key);
         return members != null ? members : new HashSet<>();
     }
     
     public Set<String> getUserSkills(String userId) {
-    	String key = "cv:cv_" + userId + ":skills";
+    	String key = "cv:" + userId + ":skills";
     	Set<String> members = redisTemplate.opsForSet().members(key);
         return members != null ? members : new HashSet<>();
     }
