@@ -1,23 +1,49 @@
 from json import dumps
 import json
+import time
 from kafka import KafkaConsumer, KafkaProducer
 from transformers import pipeline, AutoTokenizer
 
-# Initialize Kafka consumer
-consumer = KafkaConsumer(
-    'analysis',  # Topic name
-    bootstrap_servers='kafka:9092',
-    auto_offset_reset='earliest',  # Start reading from the beginning if no offset is found
-    enable_auto_commit=True,  # Automatically commit offsets
-    group_id='analysis-group',  # Consumer group ID
-    value_deserializer=lambda x: json.loads(x.decode('utf-8'))  # Deserialize message value
-)
+def create_kafka_consumer(retries=5):
+    for attempt in range(retries):
+        try:
+            return KafkaConsumer(
+                'analysis',
+                bootstrap_servers=['kafka1:9092', 'kafka2:9093', 'kafka3:9094'],
+                auto_offset_reset='earliest',
+                enable_auto_commit=True,
+                group_id='analysis-group',
+                value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+                session_timeout_ms=30000,
+                heartbeat_interval_ms=10000
+            )
+        except Exception as e:
+            if attempt < retries - 1:
+                print(f"Failed to connect to Kafka. Retrying... (Attempt {attempt + 1}/{retries})")
+                time.sleep(5)
+            else:
+                raise
 
-# Initialize Kafka producer for sending extracted skills
-producerSkills = KafkaProducer(
-    bootstrap_servers='kafka:9092',
-    value_serializer=lambda x: dumps(x).encode('utf-8')
-)
+def create_kafka_producer(retries=5):
+    for attempt in range(retries):
+        try:
+            return KafkaProducer(
+                bootstrap_servers=['kafka1:9092', 'kafka2:9093', 'kafka3:9094'],
+                value_serializer=lambda x: dumps(x).encode('utf-8'),
+                acks='all',
+                retries=3,
+                max_in_flight_requests_per_connection=1
+            )
+        except Exception as e:
+            if attempt < retries - 1:
+                print(f"Failed to create producer. Retrying... (Attempt {attempt + 1}/{retries})")
+                time.sleep(5)
+            else:
+                raise
+
+# Initialize with retry mechanism
+consumer = create_kafka_consumer()
+producerSkills = create_kafka_producer()
 
 def extract_skills(text, max_length=512):
     # Initialize the classifiers and tokenizer

@@ -17,8 +17,11 @@ def create_kafka_producer(retries=5):
     for attempt in range(retries):
         try:
             return KafkaProducer(
-                bootstrap_servers='kafka:9092',
-                value_serializer=lambda v: json.dumps(v).encode('utf-8')
+                bootstrap_servers=['kafka1:9092', 'kafka2:9093', 'kafka3:9094'],
+                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+                acks='all',  # Wait for all replicas
+                retries=3,
+                max_in_flight_requests_per_connection=1
             )
         except NoBrokersAvailable:
             if attempt < retries - 1:
