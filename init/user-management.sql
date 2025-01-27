@@ -3,3 +3,5 @@ USE users;
 CREATE USER IF NOT EXISTS 'jobsuser'@'%' IDENTIFIED BY 'jobsuser123';
 GRANT ALL PRIVILEGES ON users.* TO 'jobsuser'@'%';
 FLUSH PRIVILEGES;
+
+INSERT INTO role(name) VALUES('ROLE_USER');
