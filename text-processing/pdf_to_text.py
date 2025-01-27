@@ -2,10 +2,13 @@ import pdfplumber
 from kafka import KafkaProducer
 import json
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import os
 import time
 from kafka.errors import NoBrokersAvailable
+
 app = Flask(__name__)
+CORS(app)
 
 def create_kafka_producer(retries=5):
     for attempt in range(retries):
