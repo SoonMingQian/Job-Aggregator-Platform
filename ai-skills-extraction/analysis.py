@@ -3,24 +3,36 @@ import json
 import time
 from kafka import KafkaConsumer, KafkaProducer
 from transformers import pipeline, AutoTokenizer
+import logging
+from kafka.errors import KafkaError
 
-def create_kafka_consumer(retries=5):
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def create_kafka_consumer(retries=5, retry_interval=10):
     for attempt in range(retries):
         try:
-            return KafkaConsumer(
+            consumer = KafkaConsumer(
                 'analysis',
                 bootstrap_servers=['kafka1:9092', 'kafka2:9093', 'kafka3:9094'],
                 auto_offset_reset='earliest',
-                enable_auto_commit=True,
+                enable_auto_commit=False,
                 group_id='analysis-group',
                 value_deserializer=lambda x: json.loads(x.decode('utf-8')),
-                session_timeout_ms=30000,
-                heartbeat_interval_ms=10000
+                session_timeout_ms=45000,           # Reduced from 90000
+                request_timeout_ms=90000,           # Kept at 90000
+                heartbeat_interval_ms=15000,        # Reduced from 30000
+                reconnect_backoff_ms=5000,
+                reconnect_backoff_max_ms=60000,
+                max_poll_interval_ms=300000,
+                security_protocol='PLAINTEXT'
             )
-        except Exception as e:
+            return consumer
+        except KafkaError as e:
+            logger.error(f"Kafka Error: {str(e)}")
             if attempt < retries - 1:
-                print(f"Failed to connect to Kafka. Retrying... (Attempt {attempt + 1}/{retries})")
-                time.sleep(5)
+                time.sleep(retry_interval)
             else:
                 raise
 
@@ -41,9 +53,7 @@ def create_kafka_producer(retries=5):
             else:
                 raise
 
-# Initialize with retry mechanism
-consumer = create_kafka_consumer()
-producerSkills = create_kafka_producer()
+
 
 def extract_skills(text, max_length=512):
     # Initialize the classifiers and tokenizer
@@ -79,29 +89,42 @@ def extract_skills(text, max_length=512):
     return skills_set
 
 def start_analysis():
-    print("Waiting for messages...")
-    for message in consumer:
-        job_data = message.value
-        jobId = job_data['jobId']
-        jobDescription = job_data['jobDescription']
-        source = job_data.get('source', 'job') # Default to 'job' if source not specified
-        
-        # Extract skills from the job description
-        extracted_skills = extract_skills(jobDescription)
-
-        skills_message = {
-            'source': source,
-            'jobId': jobId,
-            'skills': list(extracted_skills)
-        }
-
-        json_message = json.dumps(skills_message)
-
-        # Log the message being sent
-        print(f"Sending extracted skills for job {jobId} to Kafka: {skills_message}")
-        producerSkills.send('skill', value=json_message)
-        producerSkills.flush()
-        print(f"Sent extracted skills for job {jobId} to Kafka")
-
+    consumer = create_kafka_consumer()
+    producerSkills = create_kafka_producer()
+    while True:
+        try:
+            message_batch = consumer.poll(timeout_ms=1000)
+            
+            for tp, messages in message_batch.items():
+                for message in messages:
+                    try:
+                        # Process message
+                        job_data = message.value
+                        jobId = job_data['jobId']
+                        extracted_skills = extract_skills(job_data['jobDescription'])
+                        
+                        # Send to Kafka
+                        skills_message = {
+                            'source': job_data.get('source', 'job'),
+                            'jobId': jobId,
+                            'skills': list(extracted_skills)
+                        }
+                        
+                        producerSkills.send('skill', value=skills_message)
+                        producerSkills.flush()
+                        
+                        # Manual commit after successful processing
+                        consumer.commit()
+                        logger.info(f"Processed and committed message for job {jobId}")
+                        
+                    except Exception as e:
+                        logger.error(f"Error processing message: {e}")
+                        continue
+                        
+        except KafkaError as e:
+            logger.error(f"Kafka error: {e}")
+            time.sleep(5)  # Wait before retry
+            continue
+    
 if __name__ == "__main__":
     start_analysis()

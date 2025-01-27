@@ -2,6 +2,7 @@ package com.example.storage.services;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -11,9 +12,14 @@ import com.example.storage.models.Jobs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class KafkaConsumerService {
 
+	private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerService.class);
+	
 	@Autowired
 	private JobsService jobsService;
 	
@@ -72,13 +78,23 @@ public class KafkaConsumerService {
             
             // Store in mysql
             if ("job".equals(source)) {
-            	jobsService.findJobById(cleanedJobId).ifPresent(job -> {
+                String mysqlJobId = "job:" + cleanedJobId;
+                logger.info("Attempting to store skills in MySQL for job: {} (MySQL ID: {})", cleanedJobId, mysqlJobId);
+                Optional<Jobs> jobOptional = jobsService.findJobById(mysqlJobId);
+                
+                if (jobOptional.isPresent()) {
+                    Jobs job = jobOptional.get();
                     job.setSkills(cleanedSkills);
                     jobsService.saveJobs(job);
-                });
-            }      
+                    logger.info("Successfully stored skills for job: {}", cleanedJobId);
+                } else {
+                    logger.error("Job not found in MySQL: {} (MySQL ID: {})", cleanedJobId, mysqlJobId);
+                }
+            } else {
+                logger.info("Skipping MySQL storage for non-job source: {}", source);
+            }         
         } catch (Exception e) {
-            System.err.println("Error processing skills message: " + e.getMessage());
+        	logger.error("Error processing skills message: {}", e.getMessage(), e);
         }
     }
 }
