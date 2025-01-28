@@ -6,11 +6,13 @@ from flask import Flask, request, jsonify
 from kafka import KafkaProducer
 import json
 import os
+from flask_cors import CORS
 
 import time
 from kafka.errors import NoBrokersAvailable
 
 app = Flask(__name__)
+CORS(app)
 
 def create_kafka_producer(retries=5):
     for attempt in range(retries):
@@ -41,17 +43,28 @@ def jobie():
     if not title or not job_location:
         return jsonify({"error": "Missing title or job_location parameter"}), 400
 
-    # Run the job search
-    results = run(title, job_location)
-    
-    return jsonify(results)
+    try:
+        # Run the job search
+        results = run(title, job_location)
+        
+        if results is None:
+            # If no cached results, perform new search
+            results = []
+            
+        print("Search results:", results)  # Debug log
+        return get_cached_results(init_redis(), title, job_location)
+        
+    except Exception as e:
+        print(f"Error in jobie endpoint: {e}")  # Debug log
+        return jsonify({"error": str(e)}), 500
 
 def run(title, job_location):
     redis_client = init_redis()
+    print(f"Checking cache for {title} in {job_location}")
 
     cached_results = get_cached_results(redis_client, title, job_location)
     if cached_results:
-        print("Using cached results")
+        print("Using cached results:", cached_results)
         return cached_results
 
     with sync_playwright() as p:
@@ -59,7 +72,9 @@ def run(title, job_location):
         context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
         page = context.new_page()
         page.goto("https://www.jobs.ie/")
-        search_jobs(redis_client, page, browser, title, job_location)
+        results = search_jobs(redis_client, page, browser, title, job_location)
+        print("Scraping results:", results)
+        return results
 
 def search_jobs(redis_client, page, browser, title, job_location):
     cookies(page)
@@ -89,7 +104,7 @@ def search_jobs(redis_client, page, browser, title, job_location):
             job_listing = job_listings.nth(job)
             job_data = {
                 'title': job_listing.locator('a[data-testid="job-item-title"] .res-nehv70').text_content(),
-                'applyLink': "https://www.jobs.ie/" + job_listing.locator('a[data-testid="job-item-title"]').get_attribute('href'),
+                'applyLink': "https://www.jobs.ie" + job_listing.locator('a[data-testid="job-item-title"]').get_attribute('href'),
                 'company': job_listing.locator('span[data-at="job-item-company-name"]').text_content(),
                 'location': job_listing.locator('span[data-at="job-item-location"]').text_content(),
                 'jobDescription': " ".join([el.text_content() for el in job_listing.locator('div[data-at="jobcard-content"]').all()]),
@@ -117,7 +132,6 @@ def search_jobs(redis_client, page, browser, title, job_location):
             except Exception as e:
                 print(f"Error while clicking the next button: {e}")
                 break
-
     close(browser)
 
 def get_number_of_pages(page):
@@ -155,7 +169,7 @@ def init_redis():
 
 def generate_job_id(job_data):
     # Create unique identifier using company name and job title
-    unique_string = f"{job_data['company']}:{job_data['title']}:{job_data['location']}"
+    unique_string = f"{job_data['company']}:{job_data['title']}:{job_data['location']}:{job_data['timestamp']}"
     # Generate UUID based on the unique string
     job_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
     return f"job:{job_id}"
