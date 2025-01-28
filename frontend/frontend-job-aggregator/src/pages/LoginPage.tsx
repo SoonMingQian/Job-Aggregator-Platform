@@ -92,11 +92,28 @@ const LoginPage: React.FC = () => {
             const data = await response.json();
             localStorage.setItem('token', `Bearer ${data.token}`);
 
-            navigate('/profile', {
-                state: {
-                    message: 'Login Successsfull.'
+            // Check if profile is complete
+            const profileResponse = await fetch('http://localhost:8081/api/user/profile-status', {
+                headers: {
+                    'Authorization': `Bearer ${data.token}`
                 }
-            });
+            })
+
+            const profileData = await profileResponse.json();
+            console.log('Profile status response:', profileData);
+
+            // Convert string "true" to boolean
+            const isComplete = profileData.message === "true";
+            console.log('Is profile complete?:', isComplete);
+            if (!isComplete) {
+                navigate('/complete-profile');
+            } else {
+                navigate('/main', {
+                    state: {
+                        message: 'Login Successful.'
+                    }
+                });
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');
         } finally {
