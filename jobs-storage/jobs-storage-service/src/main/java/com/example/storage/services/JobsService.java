@@ -26,4 +26,8 @@ public class JobsService {
 	public List<Jobs> findAllJobs() {
         return jobsRepository.findAll();
     }
+	
+	public List<Jobs> getAllJobs() {
+		return jobsRepository.findAllByOrderByTimestampDesc();
+	}
 }
