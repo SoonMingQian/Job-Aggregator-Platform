@@ -1,0 +1,60 @@
+.profile {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.profile__card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.profile__header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.profile__avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile__info h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.profile__info p {
+  margin: 5px 0;
+  color: #666;
+}
+
+.profile__skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile__skill {
+  background: #f5f5f5;
+  padding: 5px 15px;
+  border-radius: 15px;
+  font-size: 14px;
+}
+
+.profile__experience h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.profile__date {
+  color: #666;
+  font-size: 14px;
+  margin: 5px 0;
+}
