@@ -25,6 +25,9 @@ public class User {
 	
 	private String password;
 	
+	@OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private UserProfile profile;
+	
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(  name = "user_roles", 
 	     joinColumns = @JoinColumn(name = "user_id"), 
