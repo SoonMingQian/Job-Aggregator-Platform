@@ -69,4 +69,17 @@ public class UserProfileController {
 					.body(new MessageResponse("Error: " + e.getMessage()));
 		}
 	}
+	
+	@GetMapping("/profile")
+	public ResponseEntity<?> getCurrentUserProfile(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+		try {
+			UserProfile profile = userProfileService.findProfileByUserId(userDetails.getId());
+			Map<String, String> response = new HashMap<>();
+	        response.put("userId", userDetails.getId());
+	        return ResponseEntity.ok(response);
+		} catch (Exception e) {
+	        return ResponseEntity.badRequest()
+	                .body(new MessageResponse("Error: " + e.getMessage()));
+	    }
+	}
 }

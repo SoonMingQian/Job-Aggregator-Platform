@@ -48,4 +48,12 @@ public class UserProfileService {
                 
         return profile != null && profile.isComplete();
 	}
+	
+	public UserProfile findProfileByUserId(String userId) {
+	    User user = userRepository.findById(userId)
+	        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+	        
+	    return userProfileRepository.findByUser(user)
+	        .orElseThrow(() -> new ResourceNotFoundException("Profile not found for user"));
+	}
 }
