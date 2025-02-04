@@ -2,13 +2,19 @@ package com.example.matching.services;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 import com.example.matching.dto.JobMatch;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class MatchingService {
@@ -17,52 +23,31 @@ public class MatchingService {
 	private RedisService redisService;
 
 	private static final double SIMILARITY_THRESHOLD = 0.6;
-
-	public List<JobMatch> findMatchingJobs(String userId, String jobTitle, String location) {
+	private static final Logger logger = LoggerFactory.getLogger(MatchingService.class);
+	
+	@KafkaListener(topics = "matching", groupId = "matching-group")
+	public void onSkillExtractionComplete(String message) {
 		try {
-			Set<String> userSkills = redisService.getUserSkills(userId);
-			Set<String> jobIds = redisService.getJobIdFromSearchKey(jobTitle, location);
-			System.out.println(jobIds);
-			List<JobMatch> matches = new ArrayList<>();
-
-			if (jobIds == null || jobIds.isEmpty()) {
-				return matches;
-			}
-
-			System.out.println("User skills: " + userSkills);
-
-			for (String jobId : jobIds) {
-				if (jobId != null) {
-					Set<String> jobSkills = redisService.getJobSkills(jobId);
-					System.out.println("Job " + jobId + " skills: " + jobSkills);
-
-					if (!jobSkills.isEmpty()) {
-	                    double fuzzyScore = calculateFuzzyMatchScore(userSkills, jobSkills);
-	                    System.out.println("Score for " + jobId + ": " + fuzzyScore);
-	                    matches.add(new JobMatch(jobId, fuzzyScore));
-	                }
-				}
-			}
-
-			// Safe sorting with defensive checks
-			if (!matches.isEmpty()) {
-				matches.sort((a, b) -> {
-					if (a == null || b == null) return 0;
-					try {
-						return Double.compare(b.getScore(), a.getScore());
-					} catch (Exception e) {
-						return 0;
-					}
-				});
-			}
+			ObjectMapper mapper = new ObjectMapper();
+			JsonNode node = mapper.readTree(message);
+			String jobId = node.get("jobId").asText();
+			String userId = node.get("userId").asText();
 			
-			return matches;
-
-		} catch (Exception e) {
-			System.err.println("Error in findMatchingJobs: " + e.getMessage());
-			e.printStackTrace();
-			return new ArrayList<>();
-		}
+			logger.info("Skills extraction completed for job: {} and user: {}", jobId, userId);
+			Set<String> userSkills = redisService.getUserSkills(userId);
+            Set<String> jobSkills = redisService.getJobSkills(jobId);
+            
+            if(jobSkills == null || jobSkills.isEmpty()) {
+            	logger.warn("No skills found for job: {}" + jobId );
+            }
+            
+            double score = calculateFuzzyMatchScore(userSkills, jobSkills);
+            logger.info("Match score for job {} and user {}: {}", jobId, userId, score);
+	        // Store match score in Redis
+	        redisService.saveMatchScore(userId, jobId, score);
+        } catch (Exception e) {
+            logger.error("Error processing matching message: {}", e);
+        }
 	}
 
 	private double calculateFuzzyMatchScore(Set<String> userSkills, Set<String> jobSkills) {
@@ -81,8 +66,7 @@ public class MatchingService {
 			double bestMatch = 0.0;
 			for (String userSkill : userSkills) {
 				double similarity = calculateSimilarity(jobSkill.toLowerCase(), userSkill.toLowerCase());
-				System.out.println(String.format("Comparing '%s' with '%s': %.2f", 
-                jobSkill, userSkill, similarity));
+				System.out.println(String.format("Comparing '%s' with '%s': %.2f", jobSkill, userSkill, similarity));
 				bestMatch = Math.max(bestMatch, similarity);
 			}
 
@@ -104,38 +88,37 @@ public class MatchingService {
 	}
 
 	private int levenshteinDistance(String s1, String s2) {
-	    if (s1 == null || s2 == null) {
-	        return 0;
-	    }
-	    
-	    s1 = s1.trim();
-	    s2 = s2.trim();
-	    
-	    if (s1.isEmpty() || s2.isEmpty()) {
-	        return 0;
-	    }
+		if (s1 == null || s2 == null) {
+			return 0;
+		}
 
-	    int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+		s1 = s1.trim();
+		s2 = s2.trim();
 
-	    for (int i = 0; i <= s1.length(); i++) {
-	        dp[i][0] = i;
-	    }
-	    
-	    for (int j = 0; j <= s2.length(); j++) {
-	        dp[0][j] = j;
-	    }
+		if (s1.isEmpty() || s2.isEmpty()) {
+			return 0;
+		}
 
-	    for (int i = 1; i <= s1.length(); i++) {
-	        for (int j = 1; j <= s2.length(); j++) {
-	            if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
-	                dp[i][j] = dp[i - 1][j - 1];
-	            } else {
-	                dp[i][j] = 1 + Math.min(dp[i - 1][j - 1],
-	                            Math.min(dp[i - 1][j], dp[i][j - 1]));
-	            }
-	        }
-	    }
+		int[][] dp = new int[s1.length() + 1][s2.length() + 1];
 
-	    return dp[s1.length()][s2.length()];
+		for (int i = 0; i <= s1.length(); i++) {
+			dp[i][0] = i;
+		}
+
+		for (int j = 0; j <= s2.length(); j++) {
+			dp[0][j] = j;
+		}
+
+		for (int i = 1; i <= s1.length(); i++) {
+			for (int j = 1; j <= s2.length(); j++) {
+				if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+					dp[i][j] = dp[i - 1][j - 1];
+				} else {
+					dp[i][j] = 1 + Math.min(dp[i - 1][j - 1], Math.min(dp[i - 1][j], dp[i][j - 1]));
+				}
+			}
+		}
+
+		return dp[s1.length()][s2.length()];
 	}
 }

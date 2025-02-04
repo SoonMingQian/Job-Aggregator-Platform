@@ -1,6 +1,8 @@
 package com.example.matching.services;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,5 +50,26 @@ public class RedisService {
 
     public boolean hasKey(String key) {
         return redisTemplate.hasKey(key);
+    }
+    
+    public void saveMatchScore(String userId, String jobId, double score) {
+    	redisTemplate.opsForHash().put(
+    	        "match:" + userId,
+    	        jobId,
+    	        String.valueOf(score)
+    	    );
+    }
+    
+    public Map<String, Double> getMatchScores(String userId) {
+    	Map<Object, Object> rawScores = redisTemplate.opsForHash().entries("match:" + userId);
+    	Map<String, Double> scores = new HashMap<>();
+    	
+    	for (Map.Entry<Object, Object> entry : rawScores.entrySet()) {
+    		String jobId = entry.getKey().toString();
+    		Double score = Double.parseDouble(entry.getValue().toString());
+    		scores.put(jobId, score);
+    	}
+    	
+    	return scores;
     }
 }
