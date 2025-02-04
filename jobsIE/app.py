@@ -39,26 +39,34 @@ producerStorage = create_kafka_producer()
 def jobie():
     title = request.args.get('title')
     job_location = request.args.get('job_location')
+    user_agent = request.args.get('user_agent')
+    user_id = request.args.get('userId') 
 
-    if not title or not job_location:
-        return jsonify({"error": "Missing title or job_location parameter"}), 400
+    if not title or not job_location or not user_id:
+        return jsonify({"error": "Missing required parameters"}), 400
 
     try:
-        # Run the job search
-        results = run(title, job_location)
+        redis_client = init_redis()
+        if not redis_client:
+            return jsonify({"error": "Redis connection failed"}), 500
         
-        if results is None:
-            # If no cached results, perform new search
-            results = []
-            
-        print("Search results:", results)  # Debug log
-        return get_cached_results(init_redis(), title, job_location)
+        cached_results = get_cached_results(redis_client, title, job_location)
+        if cached_results:
+            return jsonify({"jobs": cached_results})
+        
+        # If no cache, run new search
+        results = run(title, job_location, user_agent, user_id)
+        if results:
+            return jsonify({"jobs": results})
+        
+        # If no results found
+        return jsonify({"jobs": [], "message": "No jobs found"})
         
     except Exception as e:
         print(f"Error in jobie endpoint: {e}")  # Debug log
         return jsonify({"error": str(e)}), 500
 
-def run(title, job_location):
+def run(title, job_location, user_agent, user_id):
     redis_client = init_redis()
     print(f"Checking cache for {title} in {job_location}")
 
@@ -69,14 +77,14 @@ def run(title, job_location):
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=['--disable-blink-features=AutomationControlled'])
-        context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+        context = browser.new_context(user_agent=user_agent)
         page = context.new_page()
         page.goto("https://www.jobs.ie/")
-        results = search_jobs(redis_client, page, browser, title, job_location)
+        results = search_jobs(redis_client, page, browser, title, job_location, user_id)
         print("Scraping results:", results)
         return results
 
-def search_jobs(redis_client, page, browser, title, job_location):
+def search_jobs(redis_client, page, browser, title, job_location, user_id):
     cookies(page)
     # Search for jobs
     page.wait_for_selector('#stepstone-autocomplete-150')
@@ -117,7 +125,11 @@ def search_jobs(redis_client, page, browser, title, job_location):
             print(job_data)
 
             store_job_listing(redis_client, job_data, title, job_location)
-            producerAnalysis.send('analysis', value={'jobId': job_id, 'jobDescription': job_data['jobDescription']})
+            producerAnalysis.send('analysis', value={
+                'jobId': job_id, 
+                'jobDescription': job_data['jobDescription'],
+                'userId': user_id
+                })
             producerAnalysis.flush()
 
             producerStorage.send('storage', value=job_data)
