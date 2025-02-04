@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
 
@@ -13,10 +14,15 @@ interface Job {
 }
 
 const MainPage: React.FC = () => {
-    const [searchParams, setSearchParams] = useState({
-        title: '',
-        location: ''
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const location = useLocation();
+
+    const [formData, setFormData] = useState({
+        title: searchParams.get('title') || '',
+        location: searchParams.get('location') || ''
     });
+
     const [error, setError] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
     const jobsPerPage = 20;
@@ -25,14 +31,21 @@ const MainPage: React.FC = () => {
     const [expandedJob, setExpandedJob] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchJobs = async () => {
+        const initializeJobs = async () => {
             setIsLoading(true);
             try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    navigate('/');
+                    return;
+                }
+
                 const response = await fetch('http://localhost:8080/api/redis/jobs/all', {
                     headers: {
                         'Authorization': `${localStorage.getItem('token')}`
                     }
                 })
+
                 if (!response.ok) {
                     throw new Error('Failed to fetch jobs');
                 }
@@ -40,105 +53,26 @@ const MainPage: React.FC = () => {
                 const data = await response.json();
                 setJobs(data);
             } catch (error) {
-                console.error('Error fetching jobs:', error);
+                console.error('Error initializing jobs:', error);
+                setError(error instanceof Error ? error.message : 'Failed to load jobs');
             } finally {
                 setIsLoading(false);
             }
         };
-        fetchJobs();
+        initializeJobs();
     }, []);
 
-    const getUserAgent = () => {
-        return window.navigator.userAgent;
-    }
-
-    const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsLoading(true);
-        setError('');
+        navigate(`/search?title=${encodeURIComponent(formData.title)}&location=${encodeURIComponent(formData.location)}`);
+    };
 
-        try {
-            // Get token and extract userId
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('No token found');
-            }
-
-            const userAgent = getUserAgent();
-
-            // Get user profile first
-            const profileResponse = await fetch('http://localhost:8081/api/user/profile', {
-                headers: {
-                    'Authorization': token
-                }
-            });
-
-            const profileData = await profileResponse.json();
-            if (!profileResponse.ok) {
-                throw new Error('Failed to get user profile');
-            }
-
-            const userId = profileData.userId;
-            console.log('User ID:', userId);
-
-            console.log('Searching with params:', searchParams); // Debug log
-            const response = await fetch(
-                `http://127.0.0.1:3002/jobie?title=${encodeURIComponent(searchParams.title)}&job_location=${encodeURIComponent(searchParams.location)}&user_agent=${encodeURIComponent(userAgent)}`,
-                {
-                    method: 'GET', // Jobs.ie scraping uses GET
-                    headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': userAgent
-                    }
-                }
-            );
-
-            console.log('Response status:', response.status); // Debug log
-
-            const data = await response.json();
-            console.log('Response data:', data); // Debug log
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Search failed');
-            }
-
-            const matchResponse = await fetch(
-                `http://localhost:8082/api/matching/jobs?userId=${userId}&jobTitle=${searchParams.title}&location=${searchParams.location}`,
-                {
-                    headers: {
-                        'Authorization': token
-                    }
-                }
-            );
-
-            // Add error handling for match response
-            if (!matchResponse.ok) {
-                console.log('Match response status:', matchResponse.status);
-                const text = await matchResponse.text(); // Get raw response
-                console.log('Match response text:', text);
-                // Continue with empty matches if service fails
-                setJobs(data.map((job: Job) => ({ ...job, matchScore: 0 })));
-                return;
-            }
-
-            const matchData = await matchResponse.json();
-            console.log('Match data:', matchData);
-
-            // Combine jobs with match scores
-            const jobsWithMatches = data.map((job: any) => ({
-                ...job,
-                matchScore: matchData.find((m: any) => m.jobId === job.jobId)?.score || 0
-            }));
-
-            setJobs(jobsWithMatches);
-            setCurrentPage(1);
-        } catch (error) {
-            console.error('Error searching jobs:', error);
-            setError(error instanceof Error ? error.message : 'Failed to search jobs');
-        } finally {
-            setIsLoading(false);
-        }
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     // Get current jobs
@@ -160,22 +94,18 @@ const MainPage: React.FC = () => {
                 <form onSubmit={handleSearch} className='search-form'>
                     <input
                         type='text'
+                        name='title'
                         placeholder='Job Title'
-                        value={searchParams.title}
-                        onChange={(e) => setSearchParams(prev => ({
-                            ...prev,
-                            title: e.target.value
-                        }))}
+                        value={formData.title}
+                        onChange={handleInputChange}
                         className='search-input'
                     />
                     <input
                         type='text'
+                        name='location'
                         placeholder="Location..."
-                        value={searchParams.location}
-                        onChange={(e) => setSearchParams(prev => ({
-                            ...prev,
-                            location: e.target.value
-                        }))}
+                        value={formData.location}
+                        onChange={handleInputChange}
                         className="search-input"
                     />
                     <button type="submit" className="search-button" disabled={isLoading}>
@@ -190,7 +120,6 @@ const MainPage: React.FC = () => {
                             <th>Title</th>
                             <th>Company</th>
                             <th>Location</th>
-                            <th>Match Score</th>
                             <th>Action</th>
                             <th></th>
                         </tr>
@@ -202,10 +131,14 @@ const MainPage: React.FC = () => {
                                     <td>{job.title}</td>
                                     <td>{job.company}</td>
                                     <td>{job.location}</td>
-                                    <td>{job.matchScore}</td>
                                     <td>
-                                        <a href={job.applyLink} target="_blank" rel="noopener noreferrer"
-                                            className="apply-button">
+                                        <a
+                                            href={job.applyLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="apply-button"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
                                             Apply
                                         </a>
                                     </td>
