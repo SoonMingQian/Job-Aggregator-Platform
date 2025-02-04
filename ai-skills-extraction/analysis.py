@@ -101,6 +101,7 @@ def start_analysis():
                         # Process message
                         job_data = message.value
                         jobId = job_data['jobId']
+                        userId = job_data['userId']
                         extracted_skills = extract_skills(job_data['jobDescription'])
                         
                         # Send to Kafka
@@ -113,6 +114,12 @@ def start_analysis():
                         producerSkills.send('skill', value=skills_message)
                         producerSkills.flush()
                         
+                        producerSkills.send('matching', value={
+                            'jobId': jobId,
+                            'userId': userId,
+                        })
+                        
+                        producerSkills.flush()
                         # Manual commit after successful processing
                         consumer.commit()
                         logger.info(f"Processed and committed message for job {jobId}")
