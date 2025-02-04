@@ -90,7 +90,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9094
-      KAFKA_CREATE_TOPICS: "analysis:3:2,storage:3:2,skill:3:2"
+      KAFKA_CREATE_TOPICS: "analysis:3:2,storage:3:2,skill:3:2,matching:3:2"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_DEFAULT_REPLICATION_FACTOR: 2
@@ -197,6 +197,12 @@ services:
     depends_on:
       redis:
         condition: service_started
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
     networks:
       - app-network
 
