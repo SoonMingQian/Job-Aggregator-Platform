@@ -93,7 +93,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
             if (!jobsieResponse.ok) throw new Error('Search failed');
 
             const data: SearchResponse = await jobsieResponse.json();
-            
+
             // Set initial jobs
             const initialJobs = data.jobs.map(job => ({
                 ...job,
@@ -118,7 +118,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
         if (title || location) {
             fetchSearchResults();
         }
-        
+
         return () => {
             if (pollInterval) {
                 clearInterval(pollInterval);
@@ -143,76 +143,81 @@ const SearchResultPage: React.FC = (): JSX.Element => {
     return (
         <div className="main-page">
             <div className='search-results-header'>
-                <h2>Search Results for "{title}" in {location}</h2>
                 <button onClick={handleBackClick} className="back-button">
                     Back to Search
                 </button>
             </div>
 
-            {isLoading && <div className="loading">Loading results...</div>}
-            {error && <div className="error-message">{error}</div>}
+            {isLoading ? (
+                <div className="loading-container">
+                    <div className="loader"></div>
+                </div>
+            ) : error ? (
+                <div className="error-message">{error}</div>
+            ) : (
+                <div className='jobs-section'>
+                    <span>Search Results for "{title}" in {location}</span>
+                    <table className='jobs-table'>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Company</th>
+                                <th>Location</th>
+                                <th>Match Score</th>
+                                <th>Action</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {currentJobs.map((job: Job) => (
+                                <React.Fragment key={job.jobId}>
+                                    <tr className='job-row' onClick={() => toggleJobDescription(job.jobId)}>
+                                        <td>{job.title}</td>
+                                        <td>{job.company}</td>
+                                        <td>{job.location}</td>
+                                        <td>
+                                            {job.matchScore === undefined ? (
+                                                <span className="calculating">Calculating...</span>
+                                            ) : (
+                                                `${job.matchScore}%`
+                                            )}
+                                        </td>
+                                        <td>
+                                            <a
+                                                href={job.applyLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="apply-button"
+                                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                            >
+                                                Apply
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <button className="expand-button">
+                                                <span className={`expand-icon ${expandedJob === job.jobId ? 'expanded' : ''}`}>
+                                                    ▶
+                                                </span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr className={`job-description ${expandedJob === job.jobId ? 'expanded' : ''}`}>
+                                        <td colSpan={6}>{job.jobDescription}</td>
+                                    </tr>
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
 
-            <div className='jobs-section'>
-                <table className='jobs-table'>
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Company</th>
-                            <th>Location</th>
-                            <th>Match Score</th>
-                            <th>Action</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {currentJobs.map((job: Job) => (
-                            <React.Fragment key={job.jobId}>
-                                <tr className='job-row' onClick={() => toggleJobDescription(job.jobId)}>
-                                    <td>{job.title}</td>
-                                    <td>{job.company}</td>
-                                    <td>{job.location}</td>
-                                    <td>
-                                        {job.matchScore === undefined ? (
-                                            <span className="calculating">Calculating...</span>
-                                        ) : (
-                                            `${job.matchScore}%`
-                                        )}
-                                    </td>
-                                    <td>
-                                        <a
-                                            href={job.applyLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="apply-button"
-                                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                                        >
-                                            Apply
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <button className="expand-button">
-                                            <span className={`expand-icon ${expandedJob === job.jobId ? 'expanded' : ''}`}>
-                                                ▶
-                                            </span>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr className={`job-description ${expandedJob === job.jobId ? 'expanded' : ''}`}>
-                                    <td colSpan={6}>{job.jobDescription}</td>
-                                </tr>
-                            </React.Fragment>
-                        ))}
-                    </tbody>
-                </table>
-
-                {jobs.length > 0 && (
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={Math.ceil(jobs.length / jobsPerPage)}
-                        onPageChange={setCurrentPage}
-                    />
-                )}
-            </div>
+                    {jobs.length > 0 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={Math.ceil(jobs.length / jobsPerPage)}
+                            onPageChange={setCurrentPage}
+                        />
+                    )}
+                </div>
+            )}
         </div>
     )
 }

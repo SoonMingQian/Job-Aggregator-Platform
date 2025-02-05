@@ -39,6 +39,8 @@
     background-position: 12px center;
     background-size: 20px;
     transition: border-color 0.2s;
+    min-height: 48px;
+    box-sizing: border-box;
 }
 
 .search-input:focus {
@@ -70,6 +72,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 48px;
+    box-sizing: border-box;
 }
 
 .search-button:hover {
@@ -184,13 +188,95 @@
     border-color: #111;
 }
 
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+}
+
+.loader {
+    width: fit-content;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 30px;
+    background: linear-gradient(90deg, #000 50%, #0000 0) right/200% 100%;
+    animation: textLoading 2s infinite linear;
+}
+
+.loader::before {
+    content: "Loading...";
+    color: #0000;
+    padding: 0 5px;
+    background: inherit;
+    background-image: linear-gradient(90deg, #fff 50%, #000 0);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+@keyframes textLoading {
+    100% {
+        background-position: left;
+    }
+}
+
 @media (max-width: 768px) {
     .search-form {
         flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        padding: 0 20px;
     }
     
-    .search-input,
-    .search-button {
+    .search-input {
         width: 100%;
+        min-height: 48px;
+        height: 48px;
+        font-size: 16px;
     }
+    
+    .search-button {
+        width: auto;
+        min-width: 200px;
+        min-height: 48px;
+        height: 48px;
+        margin: 0 auto;
+    }
+
+    .search-section {
+        padding: 20px 10px;
+    }
+
+    .search-section h1 {
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #111;
+    margin: 20px 0;
+}
+
+.back-button::before {
+    content: "←";
+    font-size: 20px;
+}
+
+.back-button:hover {
+    opacity: 0.7;
+}
+
+.search-results-header {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
 }

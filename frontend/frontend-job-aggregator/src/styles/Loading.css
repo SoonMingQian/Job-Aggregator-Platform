@@ -1,0 +1,37 @@
+.content-loader {
+    position: relative;
+    min-height: calc(100vh - 200px); /* Adjust based on your header height */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    margin: 0 auto;  /* Changed from 20px to 0 */
+    max-width: 1200px;
+    padding: 0 20px;
+}
+
+.loader {
+    width: fit-content;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 30px;
+    background: linear-gradient(90deg, #000 50%, #0000 0) right/200% 100%;
+    animation: textLoading 2s infinite linear;
+    margin-bottom: 100px; /* This will offset it slightly up from dead center if needed */
+}
+
+.loader::before {
+    content: "Loading...";
+    color: #0000;
+    padding: 0 5px;
+    background: inherit;
+    background-image: linear-gradient(90deg, #fff 50%, #000 0);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+@keyframes textLoading {
+    100% {
+        background-position: left;
+    }
+}

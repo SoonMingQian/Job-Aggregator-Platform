@@ -36,7 +36,7 @@
 
 .nav-links a {
     color: #555;
-    text-decoration: none;
+    text-decoration: none;  /* This ensures no default underline */
     font-size: 0.95rem;
     padding: 0.5rem;
     position: relative;
@@ -45,6 +45,7 @@
 
 .nav-links a:hover {
     color: #111;
+    text-decoration: none;  /* This ensures no underline on hover */
 }
 
 .nav-links a::after {
@@ -65,19 +66,54 @@
 
 .nav-links button {
     background: white;
-    border: 1px solid #eee;
+    border: 1px solid #111;  /* Changed from #eee to #111 for better visibility */
     color: #111;
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1.2rem;  /* Slightly larger padding */
     font-size: 0.95rem;
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);  /* Smoother transition */
+    position: relative;
+    overflow: hidden;
+    font-weight: 500;  /* Slightly bolder text */
 }
 
 .nav-links button:hover {
     background: #111;
     color: white;
     border-color: #111;
+    transform: translateY(-1px);  /* Slight lift effect */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);  /* Subtle shadow on hover */
+}
+
+/* Active/Click state */
+.nav-links button:active {
+    transform: translateY(1px);  /* Press down effect */
+    box-shadow: none;
+}
+
+/* Focus state for accessibility */
+.nav-links button:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #111;
+}
+
+.nav-links button:hover::before {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Optional: Add a ripple effect on hover */
+.nav-links button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 120%;
+    background: rgba(0, 0, 0, 0.05);
+    transform: translate(-50%, -50%) scale(0);
+    border-radius: 50%;
+    transition: transform 0.4s ease-out;
 }
 
 /* Active link styles */
@@ -107,7 +143,7 @@
     }
 
     .nav-links button {
-        padding: 0.4rem 0.8rem;
+        padding: 0.5rem 1rem;
         font-size: 0.9rem;
     }
 }
@@ -123,6 +159,7 @@
 
     .nav-links a,
     .nav-links button {
+        padding: 0.4rem 0.8rem;
         font-size: 0.85rem;
     }
 }
