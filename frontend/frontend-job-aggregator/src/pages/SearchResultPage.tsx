@@ -74,7 +74,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
             const token = localStorage.getItem('token');
             if (!token) throw new Error('No token found');
 
-            const profileResponse = await fetch('http://localhost:8081/api/user/profile', {
+            const profileResponse = await fetch('http://localhost:8081/api/user/userId', {
                 headers: { 'Authorization': token }
             });
 
