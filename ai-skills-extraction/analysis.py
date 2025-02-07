@@ -98,31 +98,44 @@ def start_analysis():
             for tp, messages in message_batch.items():
                 for message in messages:
                     try:
-                        # Process message
-                        job_data = message.value
-                        jobId = job_data['jobId']
-                        userId = job_data['userId']
-                        extracted_skills = extract_skills(job_data['jobDescription'])
+                        data = message.value
+                        source = data.get('source', 'job')
+
+                        if source == 'cv':
+                            userId = data['userId']
+                            cvContent = data['cvContent']
+                            extracted_skills = extract_skills(cvContent)
+
+                            skills_message = {
+                                'source': 'cv',
+                                'userId': userId,
+                                'skills': list(extracted_skills)
+                            }
+
+                            producerSkills.send('skill', value=skills_message)
+                            producerSkills.flush()
                         
-                        # Send to Kafka
-                        skills_message = {
-                            'source': job_data.get('source', 'job'),
-                            'jobId': jobId,
-                            'skills': list(extracted_skills)
-                        }
-                        
-                        producerSkills.send('skill', value=skills_message)
-                        producerSkills.flush()
-                        
-                        producerSkills.send('matching', value={
-                            'jobId': jobId,
-                            'userId': userId,
-                        })
-                        
-                        producerSkills.flush()
-                        # Manual commit after successful processing
+                        else:
+                            jobId = data['jobId']
+                            userId = data['userId']
+                            extracted_skills = extract_skills(data['jobDescription'])
+
+                            skills_message = {
+                                'source': 'job',
+                                'jobId': jobId,
+                                'skills': list(extracted_skills)
+                            }
+
+                            producerSkills.send('skill', value=skills_message)
+                            producerSkills.flush()
+
+                            producerSkills.send('matching', value={
+                                'jobId': jobId,
+                                'userId': userId,
+                            })
+
                         consumer.commit()
-                        logger.info(f"Processed and committed message for job {jobId}")
+                        logger.info(f"Processed and committed message for {source} {userId}")
                         
                     except Exception as e:
                         logger.error(f"Error processing message: {e}")

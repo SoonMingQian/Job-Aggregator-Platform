@@ -70,9 +70,9 @@ def extract_text():
 def send_text_to_analysis(message):
     # Restructure message to match job format but with CV identifier
     analysis_message = {
-        'jobId': message['userId'], # Prefix with cv_ to differentiate
-        'jobDescription': message['text'],
-        'source': 'cv'
+        'source': 'cv',
+        'userId': message['userId'],  # Keep userId as is
+        'cvContent': message['text']  # Rename text to cvContent
     }
 
     print(f"Sending text to analysis: {analysis_message}")
