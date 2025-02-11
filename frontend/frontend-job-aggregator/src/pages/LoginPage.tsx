@@ -170,17 +170,22 @@ const LoginPage: React.FC = () => {
                         {isLoading ? 'Loading...' : 'Login'}
                     </button>
                 </form>
-                <p>or login up with</p>
+                <p>or login in with</p>
                 <div className="social-login">
                     <button className="social-btn facebook">Facebook</button>
                     <button className="social-btn google">Google</button>
                     <button className="social-btn apple">Apple</button>
                 </div>
-                <p>
-                    Dont have an account? <a href="/signup">Sign in</a>
-                </p>
             </div>
-            <div className="image-container" />
+            <div className="image-container">
+                <div className="signup-section">
+                    <h3>New Here?</h3>
+                    <p>Sign up and discover it</p>
+                    <button onClick={() => navigate('/signup')} className="signup-button">
+                        Sign up
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
