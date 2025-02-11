@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import Header from './components/Header';
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
@@ -11,10 +11,13 @@ import EditProfessional from './pages/EditProfessional';
 import EditContact from './pages/EditContact';
 import EditCV from './pages/EditCV';
 
-function App() {
+const AppContent: React.FC = () => {
+  const location = useLocation();
+  const showHeader: boolean = !['/login', '/', '/signup'].includes(location.pathname);
+
   return (
-    <Router>
-      <Header />
+    <>
+      {showHeader && <Header />}
       <Routes>
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/" element={<LoginPage />} />
@@ -27,8 +30,16 @@ function App() {
         <Route path="/edit-profile/contact" element={<EditContact />} />
         <Route path="/edit-profile/cv" element={<EditCV />} />
       </Routes>
-    </Router>
-  )
-}
+    </>
+  );
+};
 
-export default App
+const App: React.FC = () => {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+};
+
+export default App;
