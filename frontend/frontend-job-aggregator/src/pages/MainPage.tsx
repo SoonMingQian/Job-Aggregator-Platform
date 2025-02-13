@@ -13,6 +13,30 @@ interface Job {
     matchScore?: number;
 }
 
+interface BrowserInfo {
+    platform: string;
+    language: string;
+    timezone: string;
+    screen_resolution: string;
+    color_depth: number;
+    device_memory: number;
+    hardware_concurrency: number;
+    user_agent: string;
+}
+
+interface NavigatorUserAgentData {
+    platform: string;
+    brands: Array<{
+        brand: string;
+        version: string;
+    }>;
+    mobile: boolean;
+}
+
+interface Navigator {
+    userAgentData?: NavigatorUserAgentData;
+}
+
 const MainPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -62,9 +86,37 @@ const MainPage: React.FC = () => {
         initializeJobs();
     }, []);
 
+    const getBrowserInfo = (): BrowserInfo => {
+        return {
+            platform: navigator.platform || 'unknown',
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            screen_resolution: `${window.screen.width}x${window.screen.height}`,
+            color_depth: window.screen.colorDepth,
+            device_memory: (navigator as any).deviceMemory || 8,
+            hardware_concurrency: navigator.hardwareConcurrency || 4,
+            user_agent: navigator.userAgent
+        };
+    };
+
     const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        navigate(`/search?title=${encodeURIComponent(formData.title)}&location=${encodeURIComponent(formData.location)}`);
+        const browserInfo = getBrowserInfo();
+        // Only pass search parameters and browser info
+        const searchParams = new URLSearchParams({
+            title: formData.title,
+            location: formData.location,
+            platform: browserInfo.platform,
+            language: browserInfo.language,
+            timezone: browserInfo.timezone,
+            screen_resolution: browserInfo.screen_resolution,
+            color_depth: browserInfo.color_depth.toString(),
+            device_memory: browserInfo.device_memory.toString(),
+            hardware_concurrency: browserInfo.hardware_concurrency.toString(),
+            user_agent: browserInfo.user_agent
+        });
+
+        navigate(`/search?${searchParams}`);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

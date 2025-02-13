@@ -36,6 +36,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
 
     const pollForScores = async (userId: string, token: string) => {
         try {
+            console.log('Polling for match scores...');
             const matchResponse = await fetch(
                 `http://localhost:8082/api/redis/match/${userId}`,
                 {
@@ -47,6 +48,8 @@ const SearchResultPage: React.FC = (): JSX.Element => {
 
             if (matchResponse.ok) {
                 const matchScores = await matchResponse.json();
+                console.log('Received match scores:', matchScores);
+                
                 setJobs(prevJobs => {
                     const updatedJobs = prevJobs.map(job => ({
                         ...job,
@@ -55,7 +58,10 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     }));
 
                     const allScoresReceived = updatedJobs.every(job => job.matchScore !== undefined);
+                    console.log('All scores received:', allScoresReceived);
+                    
                     if (allScoresReceived && pollInterval) {
+                        console.log('Polling complete - all scores received');
                         clearInterval(pollInterval);
                         setPollInterval(null);
                     }
@@ -70,44 +76,106 @@ const SearchResultPage: React.FC = (): JSX.Element => {
 
     const fetchSearchResults = async (): Promise<void> => {
         try {
+            console.log('Starting search for:', { title, location });
             setIsLoading(true);
             const token = localStorage.getItem('token');
             if (!token) throw new Error('No token found');
 
+            console.log('Fetching user profile...');
             const profileResponse = await fetch('http://localhost:8081/api/user/userId', {
                 headers: { 'Authorization': token }
             });
 
             const profileData = await profileResponse.json();
+            console.log('User profile received:', profileData);
             if (!profileResponse.ok) throw new Error('Failed to get user profile');
 
             const userId = profileData.userId;
 
-            const jobsieResponse = await fetch(
-                `http://127.0.0.1:3002/jobie?title=${encodeURIComponent(title)}&job_location=${encodeURIComponent(location)}&userId=${userId}`,
-                {
-                    headers: { 'Accept': 'application/json' }
-                }
-            );
+            // Get browser info from URL params
+            const browserInfo = {
+                platform: searchParams.get('platform') || navigator.platform,
+                language: searchParams.get('language') || navigator.language,
+                timezone: searchParams.get('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
+                screen_resolution: searchParams.get('screen_resolution') || `${window.screen.width}x${window.screen.height}`,
+                color_depth: searchParams.get('color_depth') || window.screen.colorDepth.toString(),
+                device_memory: searchParams.get('device_memory') || ((navigator as any).deviceMemory || '8').toString(),
+                hardware_concurrency: searchParams.get('hardware_concurrency') || navigator.hardwareConcurrency.toString(),
+                user_agent: searchParams.get('user_agent') || navigator.userAgent
+            };
 
-            if (!jobsieResponse.ok) throw new Error('Search failed');
+            console.log('Making API calls to Jobs.ie and Indeed...');
+            const [jobsieResponse, indeedResponse] = await Promise.all([
+                fetch(
+                    `http://127.0.0.1:3002/jobie?${new URLSearchParams({
+                        title: title,
+                        job_location: location,
+                        userId
+                    })}`,
+                    {
+                        headers: { 'Accept': 'application/json' }
+                    }
+                ),
+                fetch(
+                    `http://localhost:3001/indeed?${new URLSearchParams({
+                        job_title: title,
+                        job_location: location,
+                        ...browserInfo,
+                        userId
+                    })}`
+                )
+            ]);
 
-            const data: SearchResponse = await jobsieResponse.json();
+            console.log('API Response Status:', {
+                jobsie: jobsieResponse.status,
+                indeed: indeedResponse.status
+            });
 
-            // Set initial jobs
-            const initialJobs = data.jobs.map(job => ({
-                ...job,
-                matchScore: undefined,
-                isCalculating: true
-            }));
-            setJobs(initialJobs);
+            const [jobsieData, indeedData] = await Promise.all([
+                jobsieResponse.json(),
+                indeedResponse.json()
+            ]);
+
+            if (!jobsieResponse.ok || !indeedResponse.ok) {
+                throw new Error('Search failed');
+            }
+
+            if (jobsieData.error || indeedData.error) {
+                throw new Error(jobsieData.error || indeedData.error);
+            }
+
+            console.log('Jobs received:', {
+                jobsie: jobsieData.jobs?.length || 0,
+                indeed: indeedData.jobs?.length || 0
+            });
+
+            // Combine jobs from both sources
+            const combinedJobs = [
+                ...(jobsieData.jobs || []).map((job: Job) => ({
+                    ...job,
+                    source: 'jobs.ie',
+                    matchScore: undefined,
+                    isCalculating: true
+                })),
+                ...(indeedData.jobs || []).map((job: Job) => ({
+                    ...job,
+                    source: 'indeed',
+                    matchScore: undefined,
+                    isCalculating: true
+                }))
+            ];
+
+            console.log('Total combined jobs:', combinedJobs.length);
+            setJobs(combinedJobs);
 
             // Start polling
+            console.log('Starting polling for match scores...');
             if (pollInterval) clearInterval(pollInterval);
             const interval = setInterval(() => pollForScores(userId, token), 2000);
             setPollInterval(interval);
 
         } catch (error) {
+            console.error('Search error:', error);
             setError(error instanceof Error ? error.message : 'Failed to fetch results');
         } finally {
             setIsLoading(false);
@@ -115,12 +183,14 @@ const SearchResultPage: React.FC = (): JSX.Element => {
     };
 
     useEffect(() => {
+        console.log('SearchResultPage mounted/updated with:', { title, location });
         if (title || location) {
             fetchSearchResults();
         }
 
         return () => {
             if (pollInterval) {
+                console.log('Cleaning up poll interval');
                 clearInterval(pollInterval);
                 setPollInterval(null);
             }
