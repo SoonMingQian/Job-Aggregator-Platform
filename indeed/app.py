@@ -42,37 +42,43 @@ producerStorage = create_kafka_producer()
 
 @app.route('/indeed', methods=['GET'])
 def indeed():
-    job_title = request.args.get('job_title')
-    job_location = request.args.get('job_location')
-    user_agent = request.args.get('user_agent')
-    user_id = request.args.get('userId') 
-    # Get client IP considering Docker networking
-    client_ip = request.headers.get('X-Real-IP', request.remote_addr)
+    try:
+        job_title = request.args.get('job_title')
+        job_location = request.args.get('job_location')
+        user_agent = request.args.get('user_agent')
+        user_id = request.args.get('userId') 
+        client_ip = request.headers.get('X-Real-IP', request.remote_addr)
+        
+        if client_ip.startswith('172.') or client_ip.startswith('192.168.'):
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            if ',' in client_ip:
+                client_ip = client_ip.split(',')[0].strip()
+        
+        browser_info = {
+            'platform': request.args.get('platform'),
+            'language': request.args.get('language'),
+            'timezone': request.args.get('timezone'),
+            'screen_resolution': request.args.get('screen_resolution'),
+            'color_depth': request.args.get('color_depth'),
+            'device_memory': request.args.get('device_memory'),
+            'hardware_concurrency': request.args.get('hardware_concurrency')
+        }
+
+        if not job_title or not job_location or not user_id:
+            logger.error("Missing parameters")
+            return jsonify({"error": "Missing parameters"}), 400
+
+        results = asyncio.run(main(job_title, job_location, user_agent, client_ip, browser_info, user_id))
+        
+        # Check if results is an error object
+        if isinstance(results, dict) and results.get('status') == 'error':
+            return jsonify({"error": results['message']}), 500
+        else:
+            return jsonify({"jobs": results})
     
-    # If we're getting Docker's internal IP, try other headers
-    if client_ip.startswith('172.') or client_ip.startswith('192.168.'):
-        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        # Get first IP if multiple are present
-        if ',' in client_ip:
-            client_ip = client_ip.split(',')[0].strip()
-    browser_info = {
-        'platform': request.args.get('platform'),
-        'language': request.args.get('language'),
-        'timezone': request.args.get('timezone'),
-        'screen_resolution': request.args.get('screen_resolution'),
-        'color_depth': request.args.get('color_depth'),
-        'device_memory': request.args.get('device_memory'),
-        'hardware_concurrency': request.args.get('hardware_concurrency')
-    }
-
-    if not job_title or not job_location or not user_id:
-        logger.error("Missing parameters")
-        return jsonify({"error": "Missing job_title or job_location parameter"}), 400
-
-    # Run the job search
-    results = asyncio.run(main(job_title, job_location, user_agent, client_ip, browser_info, user_id))
-    logger.info(f"Scraping completed. Found {len(results) if results else 0} jobs")
-    return jsonify(results)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 async def check_pages(job_title, job_location, context, browser_info): 
     page = await context.new_page()
@@ -250,12 +256,11 @@ async def get_jobs(redis_client, page, job_title, job_location, user_id):
             except Exception as e:
                 logger.error(f"Error processing job {i}: {e}")
                 continue
-
-        return jobs
         
     except Exception as e:
         logger.error(f"Error in get_jobs: {e}")
-        return jobs
+    
+    return jobs  # This was missing
 
 async def process_job(job_data, user_id):
     try:
@@ -305,9 +310,10 @@ async def scrape_job_data(job_title, job_location, start, context, browser_info,
             )
             await page.wait_for_timeout(random.randint(500, 1000))
         
-        redis_client = await init_redis()  # Get redis client
-        jobs = await get_jobs(redis_client, page, job_title, job_location, user_id)  # Pass redis_client
-        return jobs
+        redis_client = await init_redis()
+        jobs = await get_jobs(redis_client, page, job_title, job_location, user_id)
+        
+        return jobs  # This was missing
     finally:
         await page.close()
     
@@ -359,7 +365,9 @@ async def main(job_title, job_location, user_agent, client_ip, browser_info, use
 
                 if last_page_number == 1:
                     page_jobs = await scrape_job_data(job_title, job_location, 0, context, browser_info, user_id)
-                    jobs_list.extend(page_jobs)
+                    if page_jobs:  # Add this check
+                        logger.info(f"Got {len(page_jobs)} jobs from single page")
+                        jobs_list.extend(page_jobs)
                 else:
                     tasks = []
                     for start in range(0, last_page_number * 10, 10):
@@ -369,15 +377,17 @@ async def main(job_title, job_location, user_agent, client_ip, browser_info, use
                         tasks.append(task)
                     results = await asyncio.gather(*tasks)
                     for page_jobs in results:
-                        jobs_list.extend(page_jobs)
+                        if page_jobs:  # Add this check
+                            logger.info(f"Got {len(page_jobs)} jobs from page")
+                            jobs_list.extend(page_jobs)
 
+                logger.info(f"Total jobs collected: {len(jobs_list)}")
+                return jobs_list  # Make sure this return is inside the try block
+            
             finally:
-                # Stop tracing and save
                 await context.close()
                 await browser.close()
-        
-            return jobs_list
-        
+    
     except Exception as e:
         logger.error(f"Error in main: {e}")
         return {
