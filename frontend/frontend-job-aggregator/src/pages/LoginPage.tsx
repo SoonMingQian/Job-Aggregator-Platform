@@ -121,6 +121,21 @@ const LoginPage: React.FC = () => {
         }
     };
 
+    const handleGoogleLogin = () => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        const redirectUri = import.meta.env.VITE_REDIRECT_URI;
+    
+        if (!clientId || !redirectUri) {
+            console.error('Google OAuth configuration is missing');
+            console.log('Client ID:', clientId);
+            console.log('Redirect URI:', redirectUri);
+            return;
+        }
+    
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=${redirectUri}&response_type=code&client_id=${clientId}&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+openid&access_type=offline`
+        window.location.href = authUrl;
+    };
+
     return (
         <div className="login-page">
             <div className="form-container">
@@ -173,7 +188,12 @@ const LoginPage: React.FC = () => {
                 <p>or login in with</p>
                 <div className="social-login">
                     <button className="social-btn facebook">Facebook</button>
-                    <button className="social-btn google">Google</button>
+                    <button
+                        className="social-btn google"
+                        onClick={handleGoogleLogin}
+                    >
+                        Google
+                    </button>
                     <button className="social-btn apple">Apple</button>
                 </div>
             </div>

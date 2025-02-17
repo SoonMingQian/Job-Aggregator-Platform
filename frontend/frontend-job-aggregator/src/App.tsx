@@ -10,6 +10,7 @@ import EditPersonalInfo from './pages/EditPersonalInfo';
 import EditProfessional from './pages/EditProfessional';
 import EditContact from './pages/EditContact';
 import EditCV from './pages/EditCV';
+import OAuthCallback from './components/OAuthCallback';
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -29,6 +30,7 @@ const AppContent: React.FC = () => {
         <Route path="/edit-profile/professional" element={<EditProfessional />} />
         <Route path="/edit-profile/contact" element={<EditContact />} />
         <Route path="/edit-profile/cv" element={<EditCV />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
       </Routes>
     </>
   );
