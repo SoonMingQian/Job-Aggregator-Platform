@@ -257,17 +257,7 @@ async def process_single_job(context, url, processed_urls):
 async def search_jobs(title, job_location, user_id):
     async with async_playwright() as p:
         browser = None
-        try:
-            try:
-                producerAnalysis.send('analysis', value={'test': 'connection'})
-                producerStorage.send('storage', value={'test': 'connection'})
-                producerAnalysis.flush()
-                producerStorage.flush()
-                logger.info("Kafka connection verified")
-            except Exception as e:
-                logger.error(f"Kafka connection failed: {e}")
-                return []
-            
+        try:            
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
             all_jobs = []
