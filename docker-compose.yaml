@@ -21,12 +21,14 @@ services:
   
   kafka1:
     image: wurstmeister/kafka:latest
+    container_name: job-aggregator-platform-kafka1-1
     depends_on:
       - zookeeper
     ports:
       - "9092:9092"
+    restart: unless-stopped
     volumes:
-      - kafka-data:/kafka/kafka1
+      - kafka1-data:/var/lib/kafka/data
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -51,10 +53,12 @@ services:
 
   kafka2:
     image: wurstmeister/kafka:latest
+    container_name: job-aggregator-platform-kafka2-1
     ports:
       - "9093:9093"
+    restart: unless-stopped
     volumes:
-      - kafka-data:/kafka/kafka2
+      - kafka1-data:/var/lib/kafka/data
     environment:
       KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -79,12 +83,15 @@ services:
       timeout: 10s
       retries: 5
 
+
   kafka3:
     image: wurstmeister/kafka:latest
+    container_name: job-aggregator-platform-kafka3-1
     ports:
       - "9094:9094"
+    restart: unless-stopped
     volumes:
-      - kafka-data:/kafka/kafka3
+      - kafka1-data:/var/lib/kafka/data
     environment:
       KAFKA_BROKER_ID: 3
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -290,8 +297,9 @@ networks:
 
 volumes:
   redis-data:
-  kafka-data:
-    name: job-aggregator-platform_kafka-data
+  kafka1-data:  
+  kafka2-data:
+  kafka3-data:
   zookeeper-data:
     name: job-aggregator-platform_zookeeper-data
   mysql-jobs-storage-data:
