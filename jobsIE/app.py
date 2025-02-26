@@ -153,7 +153,7 @@ class JobsIEScraper:
                     job_link = await card.query_selector('a.res-1oxi4gs')
                     if job_link:
                         href = await job_link.get_attribute('href')
-                        full_url = f"https://www.jobs.ie{href}"
+                        full_url = f"{self.base_url}{href}"
                         if full_url not in processed_urls:
                             job_urls.append(full_url)
                 except Exception as e:
@@ -220,7 +220,7 @@ class JobsIEScraper:
                 
                 try:
                     page = await context.new_page()
-                    search_url = f"https://www.jobs.ie/jobs/{title}/in-{job_location}?radius=20&sort=2&action=sort_publish"
+                    search_url = f"{self.base_url}/jobs/{title}/in-{job_location}?radius=20&sort=2&action=sort_publish"
                     await page.goto(search_url)
                     await self.handle_cookie(page)
                     await page.wait_for_selector('.res-x8pfgj')
@@ -250,7 +250,7 @@ class JobsIEScraper:
                                 'timestamp': datetime.now().isoformat(),
                             }  
                             # Store in Redis
-                            self.store_job_listing(job, title, job_location)
+                            self.store_job_listing(formatted_job, title, job_location)
                             self.producer_analysis.send('analysis', value={
                                 'jobId': job['jobId'], 
                                 'jobDescription': job['jobDescription'],
@@ -258,7 +258,7 @@ class JobsIEScraper:
                                 })
                             self.producer_analysis.flush()
 
-                            self.producer_storage.send('storage', value=job)
+                            self.producer_storage.send('storage', value=formatted_job)
                             self.producer_storage.flush()
                             all_jobs.append(formatted_job)
                         jobs_collected = len(all_jobs)
@@ -269,7 +269,7 @@ class JobsIEScraper:
                         while len(all_jobs) < total_jobs and len(all_jobs) < self.MAX_JOBS and page_num <= required_pages:
                             logger.info(f"\nProcessing page {page_num} ({len(all_jobs)}/{self.MAX_JOBS} jobs collected)")
                             new_page = await context.new_page()
-                            page_url = f"https://www.jobs.ie/jobs/{title}/in-{job_location}?radius=20&page={page_num}&sort=2&action=sort_publish"
+                            page_url = f"{self.base_url}/jobs/{title}/in-{job_location}?radius=20&page={page_num}&sort=2&action=sort_publish"
                             
                             try:
                                 await new_page.goto(page_url, timeout=20000)
@@ -287,7 +287,7 @@ class JobsIEScraper:
                                             'timestamp': datetime.now().isoformat(),
                                         } 
                                         # Store in Redis
-                                        self.store_job_listing(job, title, job_location)
+                                        self.store_job_listing(formatted_job, title, job_location)
                                         self.producer_analysis.send('analysis', value={
                                             'jobId': job['jobId'], 
                                             'jobDescription': job['jobDescription'],
@@ -295,7 +295,7 @@ class JobsIEScraper:
                                             })
                                         self.producer_analysis.flush()
 
-                                        self.producer_storage.send('storage', value=job)
+                                        self.producer_storage.send('storage', value=formatted_job)
                                         self.producer_storage.flush()
                                         all_jobs.append(formatted_job)
                                     logger.info(f"Total jobs collected: {len(all_jobs)} of {total_jobs}")

@@ -11,13 +11,6 @@ from kafka import KafkaProducer
 import time
 import logging
 from datetime import datetime
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
 
 class IrishJobsScraper:
     def __init__(self):
@@ -56,12 +49,47 @@ class IrishJobsScraper:
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
             return None
+        
+    def generate_job_id(self, job_data):
+        unique_string = f"{job_data['company']}:{job_data['title']}:{job_data['location']}:{job_data['posted_date']}"
+        job_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
+        return f"job:{job_id}"
+    
+    def generate_cache_key(self, title, job_location):
+        return f"search:{title.lower()}:{job_location.lower()}:irishJobs"
+
+    def get_cached_results(self, title, job_location):
+        cache_key = self.generate_cache_key(title, job_location)
+        cached_jobs = self.redis_client.smembers(cache_key)
+
+        if cached_jobs:
+            jobs = []
+            for job_key in cached_jobs:
+                job_data = self.redis_client.hgetall(job_key)
+                jobs.append(job_data)
+            return jobs
+        return None
+
+    def store_job_listing(self, job_data, title, job_location):
+        try:
+            job_key = job_data['jobId']
+            self.redis_client.hmset(job_key, job_data)
+            cache_key = f"search:{title.lower()}:{job_location.lower()}:irishJobs"
+            self.redis_client.sadd(cache_key, job_key)
+            self.redis_client.expire(job_key, 86400)
+            self.redis_client.expire(cache_key, 86400)
+            return job_key
+        except Exception as e:
+            logger.error(f"Error storing job listing: {e}")
+            return None
 
     async def handle_cookie(self, page):
         try:
+            # Wait for cookie banner and click accept
             accept_button = await page.wait_for_selector('#ccmgt_explicit_accept', timeout=5000)
             if accept_button:
                 await accept_button.click()
+                # Wait for cookie banner to disappear
                 await page.wait_for_selector('#ccmgt_explicit_accept', state='hidden', timeout=5000)
                 logger.info("Cookie accepted")
         except Exception as e:
@@ -69,6 +97,7 @@ class IrishJobsScraper:
 
     async def extract_job_details(self, page):
         try:
+            # Get the preloaded state data immediately without waiting
             preloaded_state = await page.evaluate('''() => {
                 return new Promise((resolve) => {
                     const checkState = () => {
@@ -108,12 +137,13 @@ class IrishJobsScraper:
             logger.error(f"Error extracting job details: {e}")
             return None
 
-    async def process_job_cards(self, page):
+    async def process_job_cards(self, page, url, processed_urls=None):
         jobs = []
         try:
-            await page.wait_for_selector('article.res-1p8f8en')
-            job_cards = await page.query_selector_all('article.res-1p8f8en')
+            await page.wait_for_selector('article.res-sfoyn7')
+            job_cards = await page.query_selector_all('article.res-sfoyn7')
             
+            # Collect all job URLs
             job_urls = []
             for card in job_cards:
                 try:
@@ -126,6 +156,7 @@ class IrishJobsScraper:
                 except Exception as e:
                     logger.error(f"Error getting job URL: {e}")
 
+            # Process jobs in batches of 3
             batch_size = 3
             for i in range(0, len(job_urls), batch_size):
                 batch = job_urls[i:i + batch_size]
@@ -133,7 +164,7 @@ class IrishJobsScraper:
                 
                 for url in batch:
                     if url not in self.processed_urls:
-                        tasks.append(self.process_single_job(page.context, url))
+                        tasks.append(self.process_single_job(page.context, url, processed_urls))
                 
                 if tasks:
                     batch_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -145,13 +176,14 @@ class IrishJobsScraper:
                     logger.info(f"Processed batch {i//batch_size + 1}")
                     await asyncio.sleep(1)
 
+            logger.info(f"Collected {len(jobs)} jobs from this page")
             return jobs
 
         except Exception as e:
             logger.error(f"Error processing page: {e}")
             return []
 
-    async def process_single_job(self, context, url):
+    async def process_single_job(self, context, url, processed_urls=None):
         job_page = None
         try:
             job_page = await context.new_page()
@@ -163,7 +195,10 @@ class IrishJobsScraper:
             )
             
             if job_data:
+                if processed_urls is not None:
+                    processed_urls.add(url)
                 self.processed_urls.add(url)
+                logger.info(f"Processed job: {job_data['title']}")
                 return job_data
                 
         except Exception as e:
@@ -173,78 +208,130 @@ class IrishJobsScraper:
             if job_page:
                 await job_page.close()
 
-    def generate_job_id(self, job_data):
-        unique_string = f"{job_data['company']}:{job_data['title']}:{job_data['location']}:{job_data['posted_date']}"
-        job_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
-        return f"job:{job_id}"
-
-    def store_job_listing(self, job_data, title, job_location):
-        try:
-            job_key = job_data['jobId']
-            self.redis_client.hmset(job_key, job_data)
-            cache_key = f"search:{title.lower()}:{job_location.lower()}:irishJobs"
-            self.redis_client.sadd(cache_key, job_key)
-            self.redis_client.expire(job_key, 86400)
-            self.redis_client.expire(cache_key, 86400)
-            return job_key
-        except Exception as e:
-            logger.error(f"Error storing job listing: {e}")
-            return None
-
     async def search_jobs(self, title, job_location, user_id):
         async with async_playwright() as p:
             browser = None
             try:
                 browser = await p.chromium.launch(headless=True)
                 context = await browser.new_context()
-                page = await context.new_page()
-                
-                search_url = f"{self.base_url}/jobs/{title}/in-{job_location}?radius=30&sort=2"
-                await page.goto(search_url)
-                await self.handle_cookie(page)
+                all_jobs = []
 
-                jobs = await self.process_job_cards(page)
-                processed_jobs = []
+                try:
+                    page = await context.new_page()
+                    search_url = f"{self.base_url}/jobs/{title}/in-{job_location}?radius=30&sort=2"
+                    await page.goto(search_url)
+                    await self.handle_cookie(page)
+                    await page.wait_for_selector('.res-14njlc6')
 
-                for job in jobs[:self.MAX_JOBS]:
-                    job_id = self.generate_job_id(job)
-                    formatted_job = {
-                        'jobId': job_id,
-                        'title': job['title'],
-                        'company': job['company'],
-                        'location': job['location'],  # Already correct from extract_job_details
-                        'jobDescription': job['jobDescription'],  # Already correct from extract_job_details
-                        'applyLink': job['applyLink'],  # Already correct from extract_job_details
-                        'timestamp': datetime.now().isoformat(),
-                    }
-                    
-                    if self.redis_client:
-                        self.store_job_listing(formatted_job, title, job_location)
-                    
-                    if self.producer_analysis and self.producer_storage:
-                        self.producer_analysis.send('analysis', value={
-                            'jobId': job_id,
-                            'jobDescription': formatted_job['jobDescription'],  # Changed from description
-                            'userId': user_id
-                        })
-                        logger.info(f"Sending to storage with fields: {formatted_job.keys()}")
-                        self.producer_storage.send('storage', value=formatted_job)
-                    
-                    processed_jobs.append(formatted_job)  # Changed from job to formatted_job
+                    total_jobs_element = await page.query_selector('.at-facet-header-total-results')
+                    if total_jobs_element:
+                        total_jobs_text = await total_jobs_element.inner_text()
+                        total_jobs = min(int(total_jobs_text.split()[0]), self.MAX_JOBS)  # Limit to MAX_JOBS
+                        logger.info(f"\nNeed to collect {total_jobs} total jobs (limited to {self.MAX_JOBS} maximum)")
+                        
+                        # Calculate required pages (25 jobs per page)
+                        required_pages = min((total_jobs + 24) // 25, (self.MAX_JOBS + 24) // 25)  # Limit pages based on MAX_JOBS
+                        logger.info(f"Will process up to {required_pages} pages")
 
-                if self.producer_analysis:
-                    self.producer_analysis.flush()
-                if self.producer_storage:
-                    self.producer_storage.flush()
+                        # Process first page
+                        first_page_jobs = await self.process_job_cards(page, self.processed_urls)
+                        # Only take up to total_jobs or MAX_JOBS from first page
+                        for job in first_page_jobs[:min(total_jobs, self.MAX_JOBS)]:
+                            job_id = self.generate_job_id(job)
+                            job['jobId'] = job_id
 
-                return processed_jobs
+                            formatted_job = {
+                                'jobId': job_id,
+                                'title': job['title'],
+                                'company': job['company'],
+                                'location': job['location'],  
+                                'jobDescription': job['jobDescription'],  
+                                'applyLink': job['applyLink'], 
+                                'timestamp': datetime.now().isoformat(),
+                            }            
+                            # Store in Redis
+                            self.store_job_listing(formatted_job, title, job_location)
+                            self.producer_analysis.send('analysis', value={
+                                'jobId': job['jobId'], 
+                                'jobDescription': job['jobDescription'],
+                                'userId': user_id
+                                })
+                            self.producer_analysis.flush()
 
+                            self.producer_storage.send('storage', value=formatted_job)
+                            self.producer_storage.flush()
+                            all_jobs.append(formatted_job)
+                        jobs_collected = len(all_jobs)
+                        logger.info(f"Collected {jobs_collected} jobs from page 1")
+
+                        # Process additional pages if needed and haven't reached MAX_JOBS
+                        page_num = 2
+                        while len(all_jobs) < total_jobs and len(all_jobs) < self.MAX_JOBS and page_num <= required_pages:
+                            print(f"\nProcessing page {page_num} ({len(all_jobs)}/{self.MAX_JOBS} jobs collected)")
+                            new_page = await context.new_page()
+                            page_url = f"{self.base_url}/jobs/{title}/in-{job_location}?radius=20&page={page_num}&sort=2&action=sort_publish"
+                            
+                            try:
+                                await new_page.goto(page_url, timeout=20000)
+                                remaining_jobs = min(total_jobs - len(all_jobs), self.MAX_JOBS - len(all_jobs))
+                                if remaining_jobs > 0:
+                                    page_jobs = await self.process_job_cards(new_page, self.processed_urls)
+                                    for job in page_jobs[:remaining_jobs]:
+                                        job_id = self.generate_job_id(job)
+                                        job['jobId'] = job_id
+                                        formatted_job = {
+                                            'jobId': job_id,
+                                            'title': job['title'],
+                                            'company': job['company'],
+                                            'location': job['location'],  
+                                            'jobDescription': job['jobDescription'],  
+                                            'applyLink': job['applyLink'], 
+                                            'timestamp': datetime.now().isoformat(),
+                                        }
+                                        # Store in Redis
+                                        self.store_job_listing(formatted_job, title, job_location)
+                                        
+                                        self.producer_analysis.send('analysis', value={
+                                            'jobId': job_id, 
+                                            'jobDescription': job['jobDescription'],
+                                            'userId': user_id
+                                            })
+                                        self.producer_analysis.flush()
+
+                                        self.producer_storage.send('storage', value=formatted_job)
+                                        self.producer_storage.flush()
+                                        all_jobs.append(formatted_job)
+                                    logger.info(f"Total jobs collected: {len(all_jobs)} of {total_jobs}")
+                            except Exception as page_error:
+                                print(f"Error loading page {page_num}: {page_error}")
+                            finally:
+                                await new_page.close()
+                            
+                            page_num += 1
+
+                        if all_jobs:
+                            logger.info(f"Successfully collected and stored {len(all_jobs)} jobs")
+                            return all_jobs  # Return the jobs directly
+                        else:
+                            logger.info("No jobs collected")
+                            return []
+                except Exception as e:
+                    logger.error(f"Error occurred: {e}")
+                    return []
             except Exception as e:
                 logger.error(f"Error in search_jobs: {e}")
                 return []
             finally:
                 if browser:
                     await browser.close()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 # Flask application setup
 app = Flask(__name__)
@@ -261,23 +348,41 @@ def irishjobs():
         return jsonify({"error": "Missing required parameters"}), 400
 
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        jobs = loop.run_until_complete(scraper.search_jobs(title, job_location, user_id))
-        loop.close()
-
-        if jobs:
+        cached_results = scraper.get_cached_results(title, job_location)
+        if cached_results:
+            logger.info(f"Found {len(cached_results)} jobs in cache")
             return jsonify({
                 "status": "success",
-                "jobs": jobs,
-                "total": len(jobs)
+                "jobs": cached_results,
+                "source": "cache"
             })
-        
-        return jsonify({
-            "status": "success",
-            "jobs": [],
-            "message": "No jobs found"
-        })
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            scraped_jobs = loop.run_until_complete(scraper.search_jobs(title, job_location, user_id))
+            loop.close()
+
+            if scraped_jobs and len(scraped_jobs) > 0:
+                logger.info(f"Successfully scraped {len(scraped_jobs)} jobs")
+                return jsonify({
+                        "status": "success",
+                        "jobs": scraped_jobs,
+                        "total": len(scraped_jobs),
+                        "source": "scraper"
+                    })        
+                
+            logger.info("No jobs found")
+            return jsonify({
+                    "status": "success",
+                    "jobs": [],
+                    "message": "No jobs found"
+                })  
+        except Exception as e:
+            logger.error(f"Scraping error: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": str(e)
+            }), 500     
 
     except Exception as e:
         logger.error(f"Endpoint error: {e}")
