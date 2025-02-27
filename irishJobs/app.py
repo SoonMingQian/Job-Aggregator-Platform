@@ -248,6 +248,7 @@ class IrishJobsScraper:
                                 'jobDescription': job['jobDescription'],  
                                 'applyLink': job['applyLink'], 
                                 'timestamp': datetime.now().isoformat(),
+                                'platform': "IrishJobs"
                             }            
                             # Store in Redis
                             self.store_job_listing(formatted_job, title, job_location)
@@ -287,6 +288,7 @@ class IrishJobsScraper:
                                             'jobDescription': job['jobDescription'],  
                                             'applyLink': job['applyLink'], 
                                             'timestamp': datetime.now().isoformat(),
+                                            'platform': "IrishJobs"
                                         }
                                         # Store in Redis
                                         self.store_job_listing(formatted_job, title, job_location)

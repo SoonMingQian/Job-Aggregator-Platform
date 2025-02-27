@@ -24,6 +24,8 @@ public class Jobs {
 	@Lob 
 	private String jobDescription;
 	
+	private String platform;
+	
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date timestamp;
 	
@@ -95,6 +97,12 @@ public class Jobs {
 	public void setSkills(Set<String> skills) {
 		this.skills = skills;
 	}
-	
-	
+
+	public String getPlatform() {
+		return platform;
+	}
+
+	public void setPlatform(String platform) {
+		this.platform = platform;
+	}
 }
