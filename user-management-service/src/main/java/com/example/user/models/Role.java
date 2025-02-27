@@ -1,5 +1,6 @@
 package com.example.user.models;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,6 +16,7 @@ public class Role {
 	private Integer id;
 	
 	@Enumerated(EnumType.STRING)
+	@Column(length = 20)
 	private ERole name;
 	
 	public Role() {
