@@ -105,9 +105,9 @@ const SearchResultPage: React.FC = (): JSX.Element => {
             };
 
             console.log('Making API calls to Jobs.ie and Indeed...');
-            const [jobsieResponse, indeedResponse] = await Promise.all([
+            const [jobsieResponse, irishjobsResponse] = await Promise.all([
                 fetch(
-                    `http://127.0.0.1:3002/jobie?${new URLSearchParams({
+                    `http://127.0.0.1:3002/jobsie?${new URLSearchParams({
                         title: title,
                         job_location: location,
                         userId
@@ -117,36 +117,48 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     }
                 ),
                 fetch(
-                    `http://localhost:3001/indeed?${new URLSearchParams({
-                        job_title: title,
+                    `http://127.0.0.1:3003/irishjobs?${new URLSearchParams({
+                        title: title,
                         job_location: location,
-                        ...browserInfo,
                         userId
-                    })}`
-                )
+                    })}`,
+                    {
+                        headers: { 'Accept': 'application/json' }
+                    }
+                ),
+                // fetch(
+                //     `http://localhost:3001/indeed?${new URLSearchParams({
+                //         job_title: title,
+                //         job_location: location,
+                //         ...browserInfo,
+                //         userId
+                //     })}`
+                // )
             ]);
 
             console.log('API Response Status:', {
                 jobsie: jobsieResponse.status,
-                indeed: indeedResponse.status
+                irishjobs: irishjobsResponse.status,
+                // indeed: indeedResponse.status
             });
 
-            const [jobsieData, indeedData] = await Promise.all([
+            const [jobsieData, irishjobsData] = await Promise.all([
                 jobsieResponse.json(),
-                indeedResponse.json()
+                irishjobsResponse.json()
+                // indeedResponse.json()
             ]);
 
-            if (!jobsieResponse.ok || !indeedResponse.ok) {
+            if (!jobsieResponse.ok || !irishjobsResponse.ok) {
                 throw new Error('Search failed');
             }
 
-            if (jobsieData.error || indeedData.error) {
-                throw new Error(jobsieData.error || indeedData.error);
+            if (jobsieData.error || irishjobsData.error) {
+                throw new Error(jobsieData.error || irishjobsData.error);
             }
 
             console.log('Jobs received:', {
                 jobsie: jobsieData.jobs?.length || 0,
-                indeed: indeedData.jobs?.length || 0
+                indeed: irishjobsData.jobs?.length || 0
             });
 
             // Combine jobs from both sources
@@ -157,12 +169,24 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     matchScore: undefined,
                     isCalculating: true
                 })),
-                ...(indeedData.jobs || []).map((job: Job) => ({
+                ...(irishjobsData.jobs || []).map((job: Job) => ({
                     ...job,
-                    source: 'indeed',
+                    source: 'irishjobs.ie',
                     matchScore: undefined,
                     isCalculating: true
-                }))
+                })),
+                // ...(indeedData.jobs || []).map((job: Job) => {
+                //     console.log('Indeed apply link:', {
+                //         jobId: job.jobId,
+                //         link: job.applyLink
+                //     });
+                //     return {
+                //         ...job,
+                //         source: 'indeed',
+                //         matchScore: undefined,
+                //         isCalculating: true
+                //     };
+                // })
             ];
 
             console.log('Total combined jobs:', combinedJobs.length);
