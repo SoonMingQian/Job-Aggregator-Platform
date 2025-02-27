@@ -132,7 +132,13 @@ const LoginPage: React.FC = () => {
             return;
         }
     
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?redirect_uri=${redirectUri}&response_type=code&client_id=${clientId}&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+openid&access_type=offline`
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+            `redirect_uri=${redirectUri}` + 
+            `&response_type=code` + 
+            `&client_id=${clientId}` + 
+            `&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+openid` + 
+            `&access_type=offline` + 
+            `&prompt=select_account`;
         window.location.href = authUrl;
     };
 
