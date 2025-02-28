@@ -241,7 +241,7 @@ class JobsIEScraper:
                         # Only take up to total_jobs or MAX_JOBS from first page
                         for job in first_page_jobs[:min(total_jobs, self.MAX_JOBS)]:
                             formatted_job = {
-                                'jobId': job['jobId'],
+                                'jobId': f"job:{job['jobId']}" if not job['jobId'].startswith('job:') else job['jobId'],
                                 'title': job['title'],
                                 'company': job['company'],
                                 'location': job['location'],  
@@ -279,7 +279,7 @@ class JobsIEScraper:
                                     page_jobs = await self.process_job_cards(new_page, self.processed_urls)
                                     for job in page_jobs[:remaining_jobs]:
                                         formatted_job = {
-                                            'jobId': job['jobId'],
+                                            'jobId': f"job:{job['jobId']}" if not job['jobId'].startswith('job:') else job['jobId'],
                                             'title': job['title'],
                                             'company': job['company'],
                                             'location': job['location'],  
