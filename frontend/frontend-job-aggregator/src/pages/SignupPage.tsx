@@ -170,12 +170,12 @@ const SignupPage: React.FC = () => {
 
     return (
         <div className="signup-page">
-            <div className="signup-form-container">
+            <div className="form-container">
                 <h1>Job Aggregator Platform</h1>
                 <h2>Signup</h2>
                 <form onSubmit={handleSubmit}>
-                    <div className="signup-name-row">
-                        <div className="signup-input-group">
+                    <div className="name-row">
+                        <div className="input-group half">
                             <label htmlFor="firstName">First Name</label>
                             <input
                                 type="text"
@@ -185,12 +185,13 @@ const SignupPage: React.FC = () => {
                                 value={formData.firstName}
                                 onChange={handleInputChange}
                                 required
+                                className={formErrors.firstName ? 'error' : ''}
                             />
                             {formErrors.firstName && (
                                 <span className="error-text">{formErrors.firstName}</span>
                             )}
                         </div>
-                        <div className="signup-input-group">
+                        <div className="input-group half">
                             <label htmlFor="lastName">Last Name</label>
                             <input
                                 type="text"
@@ -200,13 +201,14 @@ const SignupPage: React.FC = () => {
                                 value={formData.lastName}
                                 onChange={handleInputChange}
                                 required
+                                className={formErrors.lastName ? 'error' : ''}
                             />
                             {formErrors.lastName && (
                                 <span className="error-text">{formErrors.lastName}</span>
                             )}
                         </div>
                     </div>
-                    <div className="signup-input-group">
+                    <div className="input-group">
                         <label htmlFor="email">E-mail</label>
                         <input
                             type="email"
@@ -216,12 +218,13 @@ const SignupPage: React.FC = () => {
                             value={formData.email}
                             onChange={handleInputChange}
                             required
+                            className={formErrors.email ? 'error' : ''}
                         />
                         {formErrors.email && (
                             <span className="error-text">{formErrors.email}</span>
                         )}
                     </div>
-                    <div className="signup-input-group">
+                    <div className="input-group">
                         <label htmlFor="password">Password</label>
                         <input
                             type="password"
@@ -231,13 +234,14 @@ const SignupPage: React.FC = () => {
                             value={formData.password}
                             onChange={handleInputChange}
                             required
+                            className={formErrors.password ? 'error' : ''}
                         />
                         {formErrors.password && (
                             <span className="error-text">{formErrors.password}</span>
                         )}
                     </div>
-                    <div className="signup-input-group">
-                        <label htmlFor="confirmPassword">Confirm Your Password</label>
+                    <div className="input-group">
+                        <label htmlFor="confirmPassword">Confirm Password</label>
                         <input
                             type="password"
                             id="confirmPassword"
@@ -246,6 +250,7 @@ const SignupPage: React.FC = () => {
                             value={formData.confirmPassword}
                             onChange={handleInputChange}
                             required
+                            className={formErrors.confirmPassword ? 'error' : ''}
                         />
                         {formErrors.confirmPassword && (
                             <span className="error-text">{formErrors.confirmPassword}</span>
@@ -258,35 +263,30 @@ const SignupPage: React.FC = () => {
                     )}
                     <button
                         type="submit"
-                        disabled={
-                            isLoading ||
-                            !formData.firstName ||
-                            !formData.lastName ||
-                            !formData.email ||
-                            !formData.password ||
-                            !formData.confirmPassword ||
-                            !!formErrors.firstName ||
-                            !!formErrors.lastName ||
-                            !!formErrors.email ||
-                            !!formErrors.password ||
-                            !!formErrors.confirmPassword
-                        }
-                        className={`signup-button ${isLoading ? 'disabled' : ''}`}
+                        disabled={isLoading || !formData.firstName || !formData.lastName || 
+                                !formData.email || !formData.password || !formData.confirmPassword ||
+                                !!formErrors.firstName || !!formErrors.lastName || !!formErrors.email || 
+                                !!formErrors.password || !!formErrors.confirmPassword}
                     >
                         {isLoading ? 'Creating Account...' : 'Sign Up'}
                     </button>
                 </form>
-                <p>or Signup with</p>
-                <div className="signup-social-login">
-                    <button className="signup-social-btn facebook">Facebook</button>
-                    <button className="signup-social-btn google">Google</button>
-                    <button className="signup-social-btn apple">Apple</button>
+                <p>or signup with</p>
+                <div className="social-login">
+                    <button className="social-btn facebook">Facebook</button>
+                    <button className="social-btn google">Google</button>
+                    <button className="social-btn apple">Apple</button>
                 </div>
-                <p>
-                    Already have an account? <a href="/" className="signup-link">Login</a>
-                </p>
             </div>
-            <div className="signup-image-container" />
+            <div className="image-container">
+                <div className="signup-section">
+                    <h3>Already have an account?</h3>
+                    <p>Login to continue your journey</p>
+                    <button onClick={() => navigate('/')} className="signup-button">
+                        Login
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
