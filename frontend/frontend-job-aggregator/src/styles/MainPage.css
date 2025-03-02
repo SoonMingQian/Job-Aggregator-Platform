@@ -3,88 +3,6 @@
     background-color: white;
 }
 
-.search-section {
-    background-color: white;
-    padding: 40px 20px;
-    margin-bottom: 40px;
-    border-bottom: 1px solid #eee;
-    box-shadow: none;
-}
-
-.search-section h1 {
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 2em;
-    color: #111;
-    font-weight: 500;
-}
-
-.search-form {
-    display: flex;
-    gap: 15px;
-    max-width: 1200px;
-    margin: 0 auto;
-    align-items: stretch;
-}
-
-.search-input {
-    flex: 1;
-    height: 48px;
-    padding: 0 12px 0 40px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-    background-color: white;
-    background-repeat: no-repeat;
-    background-position: 12px center;
-    background-size: 20px;
-    transition: border-color 0.2s;
-    min-height: 48px;
-    box-sizing: border-box;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #111;
-}
-
-/* Add search icon to first input */
-.search-input:first-of-type {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
-}
-
-/* Add location icon to second input */
-.search-input:nth-of-type(2) {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'%3E%3C/path%3E%3Ccircle cx='12' cy='10' r='3'%3E%3C/circle%3E%3C/svg%3E");
-}
-
-.search-button {
-    height: 48px;
-    padding: 0 24px;
-    background-color: #111;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    white-space: nowrap;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
-    box-sizing: border-box;
-}
-
-.search-button:hover {
-    background-color: #000;
-}
-
-.search-button:disabled {
-    background-color: #ddd;
-    cursor: not-allowed;
-}
-
 .jobs-section {
     max-width: 1200px;
     margin: 0 auto;
@@ -205,7 +123,7 @@
 }
 
 .loader::before {
-    content: "Loading...";
+    content: "Scraping...";
     color: #0000;
     padding: 0 5px;
     background: inherit;
@@ -217,39 +135,6 @@
 @keyframes textLoading {
     100% {
         background-position: left;
-    }
-}
-
-@media (max-width: 768px) {
-    .search-form {
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        padding: 0 20px;
-    }
-    
-    .search-input {
-        width: 100%;
-        min-height: 48px;
-        height: 48px;
-        font-size: 16px;
-    }
-    
-    .search-button {
-        width: auto;
-        min-width: 200px;
-        min-height: 48px;
-        height: 48px;
-        margin: 0 auto;
-    }
-
-    .search-section {
-        padding: 20px 10px;
-    }
-
-    .search-section h1 {
-        font-size: 1.5em;
-        margin-bottom: 20px;
     }
 }
 
@@ -289,4 +174,33 @@
     text-align: center;
     color: #666;
     font-style: italic;
+}
+
+/* Add this to your MainPage.css file */
+.search-results-heading {
+    font-size: 20px;
+    font-weight: 500;
+    color: #333;
+    margin: 24px 0;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #eee;
+    display: block;
+    position: relative;
+}
+
+.search-results-heading .search-term {
+    font-weight: 600;
+    color: #111;
+}
+
+.search-results-heading .location-term {
+    font-weight: 600;
+    color: #111;
+}
+
+.search-results-count {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #666;
+    display: block;
 }

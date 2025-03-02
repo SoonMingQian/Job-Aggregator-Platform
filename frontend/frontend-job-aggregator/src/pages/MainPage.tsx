@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
+import SearchBar from '../components/SearchBar';
 
 interface Job {
     jobId: string;
@@ -11,6 +12,7 @@ interface Job {
     jobDescription: string;
     applyLink: string;
     matchScore?: number;
+    platform: string;
 }
 
 interface BrowserInfo {
@@ -40,12 +42,6 @@ interface Navigator {
 const MainPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const location = useLocation();
-
-    const [formData, setFormData] = useState({
-        title: searchParams.get('title') || '',
-        location: searchParams.get('location') || ''
-    });
 
     const [error, setError] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -99,13 +95,11 @@ const MainPage: React.FC = () => {
         };
     };
 
-    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const handleSearch = (title: string, location: string) => {
         const browserInfo = getBrowserInfo();
-        // Only pass search parameters and browser info
         const searchParams = new URLSearchParams({
-            title: formData.title,
-            location: formData.location,
+            title: title,
+            location: location,
             platform: browserInfo.platform,
             language: browserInfo.language,
             timezone: browserInfo.timezone,
@@ -119,13 +113,13 @@ const MainPage: React.FC = () => {
         navigate(`/search?${searchParams}`);
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+    // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    //     const { name, value } = e.target;
+    //     setFormData(prev => ({
+    //         ...prev,
+    //         [name]: value
+    //     }));
+    // };
 
     // Get current jobs
     const indexOfLastJob = currentPage * jobsPerPage;
@@ -141,30 +135,12 @@ const MainPage: React.FC = () => {
 
     return (
         <div className='main-page'>
-            <div className='search-section'>
-                <h1>Find Your Jobs</h1>
-                <form onSubmit={handleSearch} className='search-form'>
-                    <input
-                        type='text'
-                        name='title'
-                        placeholder='Job Title'
-                        value={formData.title}
-                        onChange={handleInputChange}
-                        className='search-input'
-                    />
-                    <input
-                        type='text'
-                        name='location'
-                        placeholder="Location..."
-                        value={formData.location}
-                        onChange={handleInputChange}
-                        className="search-input"
-                    />
-                    <button type="submit" className="search-button" disabled={isLoading}>
-                        {isLoading ? 'Searching...' : 'Search'}
-                    </button>
-                </form>
-            </div>
+            <SearchBar 
+                initialTitle={searchParams.get('title') || ''}
+                initialLocation={searchParams.get('location') || ''}
+                isLoading={isLoading}
+                onSearch={handleSearch}
+            />
             <div className="jobs-section">
                 <table className='jobs-table'>
                     <thead>
@@ -172,6 +148,7 @@ const MainPage: React.FC = () => {
                             <th>Title</th>
                             <th>Company</th>
                             <th>Location</th>
+                            <th>Platform</th>
                             <th>Action</th>
                             <th></th>
                         </tr>
@@ -183,6 +160,7 @@ const MainPage: React.FC = () => {
                                     <td>{job.title}</td>
                                     <td>{job.company}</td>
                                     <td>{job.location}</td>
+                                    <td>{job.platform}</td>
                                     <td>
                                         <a
                                             href={job.applyLink}
