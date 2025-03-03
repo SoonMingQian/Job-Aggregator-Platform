@@ -78,7 +78,7 @@ public class OAuthService {
 		}
 	}
 
-	public JsonObject handleGoogleAuth(String code) {
+	public JsonObject handleGoogleAuth(String code, String state) {
     	try {
     		// Get access token
     		String tokenResponse = getOauthAccessTokenGoogle(code);
@@ -86,7 +86,22 @@ public class OAuthService {
     		String accessToken = tokenJson.get("access_token").getAsString();
     		
     		// Get user profile
-    		return getProfileDetailsGoogle(accessToken);
+    		JsonObject userProfile = getProfileDetailsGoogle(accessToken);
+
+			// Parse the stae parameter to determine if this is login or signup
+			if (state != null && !state.isEmpty()) {
+				try {
+					JsonObject stateJson = new Gson().fromJson(java.net.URLDecoder.decode(state, "UTF-8"), JsonObject.class);
+					if (stateJson.has("action")) {
+						String action = stateJson.get("action").getAsString();
+						userProfile.addProperty("oauth_action", action);
+					}
+				} catch (Exception e) {
+					logger.warn("Failed to parse state paramenter" + e.getMessage());
+				}
+			}
+
+			return userProfile;
     	} catch (Exception e) {
     		throw new RuntimeException("Failed to process Google authentication", e);
     	}

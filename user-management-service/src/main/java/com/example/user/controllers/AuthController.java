@@ -128,12 +128,21 @@ public class AuthController {
 	}
 
 	@GetMapping("/grantcode")
-	public void handleGoogleCallback(@RequestParam("code") String code, HttpServletResponse response) throws IOException {
+	public void handleGoogleCallback(@RequestParam("code") String code, 
+									@RequestParam(required = false) String state, 
+									HttpServletResponse response) throws IOException {
 		try {
-			JsonObject googleUser = oAuthService.handleGoogleAuth(code);
+			JsonObject googleUser = oAuthService.handleGoogleAuth(code, state);
 			String email = googleUser.get("email").getAsString();
 
+			String action = "login";
+			if (googleUser.has("oauth_action")) {
+				action = googleUser.get("oauth_action").getAsString();
+				logger.info("OAuth action from state: {}", action);
+			}
+			
 			User user;
+			boolean isNewUser = false;
 			String googlePassword = "GOOGLE_AUTH_" + email; // Create consistent password for Google users
 
 			if (!userRepository.existsByEmail(email)) {
@@ -159,6 +168,7 @@ public class AuthController {
 			} else {
 				user = userRepository.findOptionalByEmail(email)
 						.orElseThrow(() -> new RuntimeException("Error: User not found."));
+				logger.info("Found existing user from OAuth: {}", email);
 			}
 
 			// Create UserDetails directly without password authentication
@@ -177,10 +187,15 @@ public class AuthController {
 			List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
 					.collect(Collectors.toList());
 
+			// Add a parameter to indicate if this was a new user registration
+			String registrationStatus = isNewUser ? "new" : "existing";
+
 			// Redirect to frontend with token
 	        String redirectUrl = String.format("http://localhost:5173/oauth/callback?token=%s&email=%s",
 	                URLEncoder.encode(jwt, StandardCharsets.UTF_8),
-	                URLEncoder.encode(userDetails.getEmail(), StandardCharsets.UTF_8));
+	                URLEncoder.encode(userDetails.getEmail(), StandardCharsets.UTF_8),
+					registrationStatus,
+					action);
 	        
 	        response.sendRedirect(redirectUrl);
 

@@ -6,16 +6,27 @@ const OAuthCallback: React.FC = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null); 
 
     useEffect(() => {
         const processAuth = async () => {
             try {
                 const token: string | null = searchParams.get('token');
-
+                const registration = searchParams.get('registration'); 
+                const action = searchParams.get('action'); 
                 if (!token) {
                     setErrorMessage('Authentication failed: No token received');
                     setTimeout(() => navigate('/'), 1500);
                     return;
+                }
+
+                // Set appropriate message based on registration status and action
+                if (action === 'signup' && registration === 'new') {
+                    setSuccessMessage('Account created successfully!');
+                } else if (action === 'signup' && registration === 'existing') {
+                    setSuccessMessage('Welcome back! You already had an account.');
+                } else {
+                    setSuccessMessage('Successfully logged in!');
                 }
 
                 // Store token
@@ -37,14 +48,22 @@ const OAuthCallback: React.FC = () => {
                 
                 if (!isComplete) {
                     // Navigate to profile completion page
-                    navigate('/complete-profile');
+                    setTimeout(() => {
+                        navigate('/complete-profile', {
+                            state: { 
+                                message: successMessage || 'Authentication successful'
+                            }
+                        });
+                    }, 1500);
                 } else {
                     // Navigate to main page
-                    navigate('/main', {
-                        state: { 
-                            message: 'Login Successful' 
-                        }
-                    });
+                    setTimeout(() => {
+                        navigate('/main', {
+                            state: { 
+                                message: successMessage || 'Authentication successful'
+                            }
+                        });
+                    }, 1500);
                 }
             } catch (error) {
                 console.error('Error during OAuth callback processing:', error);
@@ -64,6 +83,8 @@ const OAuthCallback: React.FC = () => {
                 <div className="text-lg">Processing authentication...</div>
             ) : errorMessage ? (
                 <div className="text-lg text-red-500">{errorMessage}</div>
+            ) : successMessage ? (
+                <div className="text-lg text-green-500">{successMessage}</div>
             ) : null}
         </div>
     );

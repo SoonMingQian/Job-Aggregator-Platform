@@ -168,6 +168,29 @@ const SignupPage: React.FC = () => {
         }
     };
 
+    const handleGoogleSignup = () => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        const redirectUri = import.meta.env.VITE_REDIRECT_URI;
+    
+        if (!clientId || !redirectUri) {
+            console.error('Google OAuth configuration is missing');
+            return;
+        }
+
+        // Add a state parameter to indicate this is a signup request
+        const state = encodeURIComponent(JSON.stringify({ action: 'signup' }));
+    
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+            `redirect_uri=${redirectUri}` + 
+            `&response_type=code` + 
+            `&client_id=${clientId}` + 
+            `&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+openid` + 
+            `&access_type=offline` + 
+            `&prompt=select_account`+
+            `&state=${state}`;
+        window.location.href = authUrl;
+    };
+
     return (
         <div className="signup-page">
             <div className="form-container">
@@ -274,7 +297,7 @@ const SignupPage: React.FC = () => {
                 <p>or signup with</p>
                 <div className="social-login">
                     <button className="social-btn facebook">Facebook</button>
-                    <button className="social-btn google">Google</button>
+                    <button className="social-btn google" onClick={handleGoogleSignup}>Google</button>
                     <button className="social-btn apple">Apple</button>
                 </div>
             </div>

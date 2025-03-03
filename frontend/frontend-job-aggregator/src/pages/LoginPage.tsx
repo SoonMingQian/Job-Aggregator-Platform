@@ -131,6 +131,8 @@ const LoginPage: React.FC = () => {
             console.log('Redirect URI:', redirectUri);
             return;
         }
+
+        const state = encodeURIComponent(JSON.stringify({ action: 'login' }));
     
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
             `redirect_uri=${redirectUri}` + 
@@ -138,7 +140,8 @@ const LoginPage: React.FC = () => {
             `&client_id=${clientId}` + 
             `&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+openid` + 
             `&access_type=offline` + 
-            `&prompt=select_account`;
+            `&prompt=select_account` +
+            `&state=${state}`;
         window.location.href = authUrl;
     };
 
