@@ -14,17 +14,17 @@ import OAuthCallback from './components/OAuthCallback';
 
 const AppContent: React.FC = () => {
   const location = useLocation();
-  const showHeader: boolean = !['/login', '/', '/signup'].includes(location.pathname);
+  const showHeader: boolean = !['/login', '/signup'].includes(location.pathname);
 
   return (
     <>
       {showHeader && <Header />}
       <Routes>
         <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/complete-profile" element={<CompleteProfile />} />
-        <Route path="/main" element={<MainPage />} />
+        <Route path="/" element={<MainPage />} />
         <Route path="/search" element={<SearchResultPage />} />
         <Route path="/edit-profile/personal-info" element={<EditPersonalInfo />} />
         <Route path="/edit-profile/professional" element={<EditProfessional />} />
