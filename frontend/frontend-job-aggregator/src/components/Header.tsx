@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Header.css";
+import Cookies from 'js-cookie';
 
 const Header: React.FC = (): JSX.Element => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -8,26 +9,25 @@ const Header: React.FC = (): JSX.Element => {
 
     useEffect(() => {
         const checkAuth = () => {
-            const token = localStorage.getItem("token");
+            const token = Cookies.get("authToken");
             setIsAuthenticated(!!token);
         };
 
         checkAuth();
-
-        // Add event listener for storage changes
-        window.addEventListener('storage', checkAuth);
         
         // Custom event listener for auth changes
         window.addEventListener('authChange', checkAuth);
 
+        const intervalId = setInterval(checkAuth, 60000);
+
         return () => {
-            window.removeEventListener('storage', checkAuth);
             window.removeEventListener('authChange', checkAuth);
+            clearInterval(intervalId);
         };
     }, []);
 
     const handleLogout = (): void => {
-        localStorage.removeItem("token");
+        Cookies.remove("authToken", { path: '/' });
         setIsAuthenticated(false);
         navigate("/");
         // Dispatch auth change event

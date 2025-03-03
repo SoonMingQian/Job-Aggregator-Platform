@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/CompleteProfile.css";
+import Cookies from 'js-cookie';
 
 interface UserInfoFormData {
     phoneNumber: string;
@@ -109,12 +110,12 @@ const CompleteProfile: React.FC = () => {
         setError('');
 
         try {
-            const token = localStorage.getItem('token');
+            const token = Cookies.get('authToken');
             if (!token) {
                 throw new Error('Token not found');
             }
             // Remove Bearer if present
-            const actualToken = token.replace('Bearer ', '');
+            const actualToken = token.startsWith('Bearer ') ? token.substring(7) : token;
 
             const formDataToSend = new FormData();
             formDataToSend.append('phoneNumber', formData.phoneNumber);

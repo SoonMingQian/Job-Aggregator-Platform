@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/ProfilePage.css';
 import { useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 interface UserProfile {
   firstName: string;
@@ -41,7 +42,7 @@ const ProfilePage: React.FC = (): JSX.Element => {
   useEffect(() => {
     const fetchProfile = async (): Promise<void> => {
       try {
-        const token = localStorage.getItem('token');
+        const token = Cookies.get('authToken');
         if (!token) throw new Error('No token found');
 
         const profileResponse = await fetch('http://localhost:8081/api/user/profile', {

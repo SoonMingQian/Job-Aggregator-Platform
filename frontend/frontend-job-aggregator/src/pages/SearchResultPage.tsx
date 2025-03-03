@@ -4,6 +4,7 @@ import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
 import DOMPurify from 'dompurify';
+import Cookies from 'js-cookie';
 
 interface Job {
     jobId: string;
@@ -15,11 +16,6 @@ interface Job {
     matchScore?: number;
     isCalculating?: boolean;
     platform: string;
-}
-
-interface SearchResponse {
-    jobs: Job[];
-    error?: string;
 }
 
 // Add this utility function at the top of your file
@@ -103,7 +99,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
             setIsRequesting(true);
             console.log('Starting search for:', { title, location });
             setIsLoading(true);
-            const token = localStorage.getItem('token');
+            const token = Cookies.get('authToken');
             if (!token) throw new Error('No token found');
 
             console.log('Fetching user profile...');
@@ -254,7 +250,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                         const needScores = fetchedJobs.some(job => job.matchScore === undefined);
                         if (needScores) {
 
-                            const token = localStorage.getItem('token');
+                            const token = Cookies.get('authToken');
                             const profileResponse = await fetch('http://localhost:8081/api/user/userId', {
                                 headers: { 'Authorization': token as string }
                             });

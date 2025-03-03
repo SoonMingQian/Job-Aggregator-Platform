@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 const OAuthCallback: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -29,9 +30,17 @@ const OAuthCallback: React.FC = () => {
                     setSuccessMessage('Successfully logged in!');
                 }
 
-                // Store token
-                localStorage.setItem('token', token.startsWith('Bearer ') ? token : `Bearer ${token}`);
-                
+                // Store token in cookie instead of localStorage
+                const formattedToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+
+                // Set the cookie with secure options
+                Cookies.set('authToken', formattedToken, {
+                    expires: 31, // expires in 7 days
+                    secure: window.location.protocol === 'https:', // only send over HTTPS
+                    sameSite: 'strict', // restrict to same site
+                    path: '/' // available across the site
+                });
+
                 // Check if profile is complete
                 const response = await fetch('http://localhost:8081/api/user/profile-status', {
                     headers: {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/EditPage.css';
+import Cookies from 'js-cookie';
 
 const EditCV: React.FC = () => {
     const navigate = useNavigate();
@@ -15,7 +16,7 @@ const EditCV: React.FC = () => {
         try {
             setIsLoading(true);
             setError(null);
-            const token = localStorage.getItem('token');
+            const token = Cookies.get('authToken');
             if (!token) throw new Error('No token found');
 
             // Upload CV first and get userId from response

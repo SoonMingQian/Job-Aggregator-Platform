@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../styles/EditPage.css';
+import Cookies from 'js-cookie';
 
 const EditContact: React.FC = () => {
     const location = useLocation();
@@ -13,7 +14,7 @@ const EditContact: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
+            const token = Cookies.get('authToken');
             const response = await fetch('http://localhost:8081/api/user/profile/contact', {
                 method: 'PUT',
                 headers: {

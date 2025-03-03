@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/LoginPage.css';
-
+import Cookies from 'js-cookie';
 interface LoginFormData {
     email: string;
     password: string;
@@ -90,12 +90,20 @@ const LoginPage: React.FC = () => {
             }
 
             const data = await response.json();
-            localStorage.setItem('token', `Bearer ${data.token}`);
+            const formattedToken = `Bearer ${data.token}`;
+            Cookies.set('authToken', formattedToken, {
+                expires: 31, // expires in 7 days
+                secure: window.location.protocol === 'https:', // only send over HTTPS
+                sameSite: 'strict', // restrict to same site
+                path: '/' // available across the site
+            });
+
+            window.dispatchEvent(new Event('authChange'));
 
             // Check if profile is complete
             const profileResponse = await fetch('http://localhost:8081/api/user/profile-status', {
                 headers: {
-                    'Authorization': `Bearer ${data.token}`
+                    'Authorization': formattedToken
                 }
             })
 

@@ -4,6 +4,7 @@ import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
 import DOMPurify from 'dompurify';
+import Cookies from 'js-cookie';
 
 interface Job {
     jobId: string;
@@ -55,7 +56,7 @@ const MainPage: React.FC = () => {
         const initializeJobs = async () => {
             setIsLoading(true);
             try {
-                const token = localStorage.getItem('token');
+                const token = Cookies.get('authToken');
                 if (!token) {
                     navigate('/');
                     return;
@@ -63,7 +64,7 @@ const MainPage: React.FC = () => {
 
                 const response = await fetch('http://localhost:8080/api/redis/jobs/all', {
                     headers: {
-                        'Authorization': `${localStorage.getItem('token')}`
+                        'Authorization': token
                     }
                 })
 

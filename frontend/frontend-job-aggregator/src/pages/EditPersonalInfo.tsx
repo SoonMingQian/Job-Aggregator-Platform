@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../styles/EditPage.css';
+import Cookies from 'js-cookie';
 
 interface FormData {
     firstName: string;
@@ -18,7 +19,7 @@ const EditPersonalInfo: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
+            const token = Cookies.get('authToken');
             if (!token) {
                 throw new Error('No token found');
             }
