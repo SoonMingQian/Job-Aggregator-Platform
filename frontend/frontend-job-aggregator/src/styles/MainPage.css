@@ -204,3 +204,26 @@
     color: #666;
     display: block;
 }
+
+.job-description-content {
+    padding: 15px;
+    line-height: 1.5;
+}
+
+.job-description-content p {
+    margin-bottom: 10px;
+}
+
+.job-description-content ul,
+.job-description-content ol {
+    margin-left: 20px;
+    margin-bottom: 10px;
+}
+
+.job-description-content li {
+    margin-bottom: 5px;
+}
+
+.job-description-content strong {
+    font-weight: 600;
+}

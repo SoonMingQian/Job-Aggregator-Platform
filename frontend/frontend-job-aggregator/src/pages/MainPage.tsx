@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
+import DOMPurify from 'dompurify';
 
 interface Job {
     jobId: string;
@@ -135,7 +136,7 @@ const MainPage: React.FC = () => {
 
     return (
         <div className='main-page'>
-            <SearchBar 
+            <SearchBar
                 initialTitle={searchParams.get('title') || ''}
                 initialLocation={searchParams.get('location') || ''}
                 isLoading={isLoading}
@@ -182,7 +183,12 @@ const MainPage: React.FC = () => {
                                 </tr>
                                 <tr className={`job-description ${expandedJob === job.jobId ? 'expanded' : ''}`}>
                                     <td colSpan={6}>
-                                        {job.jobDescription}
+                                        <div
+                                            className="job-description-content"
+                                            dangerouslySetInnerHTML={{
+                                                __html: DOMPurify.sanitize(job.jobDescription)
+                                            }}
+                                        />
                                     </td>
                                 </tr>
                             </React.Fragment>
