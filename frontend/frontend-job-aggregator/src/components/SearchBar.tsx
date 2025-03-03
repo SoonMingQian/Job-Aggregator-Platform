@@ -73,7 +73,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
     return (
         <div className='search-section'>
-            <h1>Find Your Jobs</h1>
+            <h1>Search Real-Time Jobs</h1>
             <form onSubmit={handleSearch} className='search-form'>
                 <input
                     type='text'
