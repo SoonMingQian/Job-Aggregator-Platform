@@ -142,7 +142,15 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     url: `http://127.0.0.1:3002/jobsie?${new URLSearchParams({
                         title: title,
                         job_location: location,
-                        userId
+                        userId,
+                        platform: browserInfo.platform,
+                        language: browserInfo.language,
+                        timezone: browserInfo.timezone,
+                        screen_resolution: browserInfo.screen_resolution,
+                        color_depth: browserInfo.color_depth,
+                        device_memory: browserInfo.device_memory,
+                        hardware_concurrency: browserInfo.hardware_concurrency,
+                        user_agent: browserInfo.user_agent
                     })}`,
                     headers: { 'Accept': 'application/json', 'Cache-Control': 'no-store' },
                 },
@@ -151,7 +159,15 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     url: `http://127.0.0.1:3003/irishjobs?${new URLSearchParams({
                         title: title,
                         job_location: location,
-                        userId
+                        userId,
+                        platform: browserInfo.platform,
+                        language: browserInfo.language,
+                        timezone: browserInfo.timezone,
+                        screen_resolution: browserInfo.screen_resolution,
+                        color_depth: browserInfo.color_depth,
+                        device_memory: browserInfo.device_memory,
+                        hardware_concurrency: browserInfo.hardware_concurrency,
+                        user_agent: browserInfo.user_agent
                     })}`,
                     headers: { 'Accept': 'application/json', 'Cache-Control': 'no-store' },
                 }
@@ -386,7 +402,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
     }
 
     const handleBackClick = (): void => {
-        navigate('/main');
+        navigate('/');
     };
 
     const currentJobs: Job[] = jobs.slice(
@@ -531,83 +547,145 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 <div className="loading-container">
                     <div className="loader"></div>
                 </div>
-            ) : error ? (
-                <div className="error-message">{error}</div>
             ) : (
-                <div className='jobs-section'>
-                    <div className="search-results-heading">
-                        Search Results for <span className="search-term">"{title}"</span> in <span className="location-term">{location}</span>
-                        <span className="search-results-count">{jobs.length} jobs found</span>
-                    </div>
-                    <table className='jobs-table'>
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Company</th>
-                                <th>Location</th>
-                                <th>Match Score</th>
-                                <th>Platform</th>
-                                <th>Action</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentJobs.map((job: Job) => (
-                                <React.Fragment key={job.jobId}>
-                                    <tr className='job-row' onClick={() => toggleJobDescription(job.jobId)}>
-                                        <td>{job.title}</td>
-                                        <td>{job.company}</td>
-                                        <td>{job.location}</td>
-                                        <td>
-                                            {job.matchScore === undefined ? (
-                                                <span className="calculating">Calculating...</span>
-                                            ) : (
-                                                `${job.matchScore.toFixed(2)}%`
-                                            )}
-                                        </td>
-                                        <td>{job.platform}</td>
-                                        <td>
-                                            <a
-                                                href={job.applyLink}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="apply-button"
-                                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                                            >
-                                                Apply
-                                            </a>
-                                        </td>
-                                        <td>
-                                            <button className="expand-button">
-                                                <span className={`expand-icon ${expandedJob === job.jobId ? 'expanded' : ''}`}>
-                                                    ▶
-                                                </span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr className={`job-description ${expandedJob === job.jobId ? 'expanded' : ''}`}>
-                                        <td colSpan={6}>
-                                            <div
-                                                className="job-description-content"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: DOMPurify.sanitize(job.jobDescription)
-                                                }}
-                                            />
-                                        </td>
-                                    </tr>
-                                </React.Fragment>
-                            ))}
-                        </tbody>
-                    </table>
-
-                    {jobs.length > 0 && (
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={Math.ceil(jobs.length / jobsPerPage)}
-                            onPageChange={setCurrentPage}
-                        />
+                <>
+                    {/* Always show error message if there is an error */}
+                    {error && (
+                        <div className="error-container">
+                            {jobs.length > 0 ? (
+                                // Partial error - some jobs were successfully fetched
+                                <>
+                                    <div className="error-message partial-error">
+                                        <span className="error-title">Some results couldn't be loaded:</span>
+                                        {error}
+                                        <button 
+                                            className="retry-button" 
+                                            style={{marginLeft: '15px'}}
+                                            onClick={() => {
+                                                setError('');
+                                                setIsLoading(true);
+                                                fetchSearchResults().catch(err => {
+                                                    console.error("Retry failed:", err);
+                                                    setError(err instanceof Error ? err.message : "Failed to fetch results on retry");
+                                                });
+                                            }}
+                                        >
+                                            Retry Failed Sources
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                // Complete error - no jobs were fetched
+                                <>
+                                    <div className="error-message">
+                                        <span className="error-title">Error fetching job results:</span>
+                                        {error}
+                                    </div>
+                                    <button 
+                                        className="retry-button"
+                                        onClick={() => {
+                                            setError('');
+                                            setIsLoading(true);
+                                            fetchSearchResults().catch(err => {
+                                                console.error("Retry failed:", err);
+                                                setError(err instanceof Error ? err.message : "Failed to fetch results on retry");
+                                            });
+                                        }}
+                                    >
+                                        Retry Search
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     )}
-                </div>
+                    
+                    {/* Always show jobs section if there are jobs */}
+                    {jobs.length > 0 && (
+                        <div className='jobs-section'>
+                            <div className="search-results-heading">
+                                Search Results for <span className="search-term">"{title}"</span> in <span className="location-term">{location}</span>
+                                <span className="search-results-count">{jobs.length} jobs found</span>
+                            </div>
+                            
+                            <table className='jobs-table'>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Company</th>
+                                        <th>Location</th>
+                                        <th>Match Score</th>
+                                        <th>Platform</th>
+                                        <th>Action</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentJobs.map((job: Job) => (
+                                        <React.Fragment key={job.jobId}>
+                                            {/* Job rows as before */}
+                                            <tr className='job-row' onClick={() => toggleJobDescription(job.jobId)}>
+                                                <td>{job.title}</td>
+                                                <td>{job.company}</td>
+                                                <td>{job.location}</td>
+                                                <td>
+                                                    {job.matchScore === undefined ? (
+                                                        <span className="calculating">Calculating...</span>
+                                                    ) : (
+                                                        `${job.matchScore.toFixed(2)}%`
+                                                    )}
+                                                </td>
+                                                <td>{job.platform}</td>
+                                                <td>
+                                                    <a
+                                                        href={job.applyLink}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="apply-button"
+                                                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                    >
+                                                        Apply
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <button className="expand-button">
+                                                        <span className={`expand-icon ${expandedJob === job.jobId ? 'expanded' : ''}`}>
+                                                            ▶
+                                                        </span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr className={`job-description ${expandedJob === job.jobId ? 'expanded' : ''}`}>
+                                                <td colSpan={6}>
+                                                    <div
+                                                        className="job-description-content"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: DOMPurify.sanitize(job.jobDescription)
+                                                        }}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            {jobs.length > 0 && (
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={Math.ceil(jobs.length / jobsPerPage)}
+                                    onPageChange={setCurrentPage}
+                                />
+                            )}
+                        </div>
+                    )}
+                    
+                    {!isLoading && jobs.length === 0 && !error && (
+                        <div className="no-results-message">
+                            <h3>No jobs found for your search</h3>
+                            <p>Try adjusting your search terms or location for more results.</p>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     )
