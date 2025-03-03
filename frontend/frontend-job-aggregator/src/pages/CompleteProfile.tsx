@@ -167,7 +167,7 @@ const CompleteProfile: React.FC = () => {
                 throw new Error(analysisError.message || 'Error processing CV');
             }
 
-            navigate('/main', {
+            navigate('/', {
                 state: { message: 'Profile completed successfully.' }
             });
         } catch (err) {

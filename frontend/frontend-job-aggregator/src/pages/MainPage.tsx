@@ -5,7 +5,6 @@ import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
 import DOMPurify from 'dompurify';
 import Cookies from 'js-cookie';
-import { title } from 'process';
 
 interface Job {
     jobId: string;
@@ -69,7 +68,7 @@ const MainPage: React.FC = () => {
             try {
                 const token = Cookies.get('authToken');
                 if (!token) {
-                    navigate('/');
+                    navigate('/login');
                     return;
                 }
 

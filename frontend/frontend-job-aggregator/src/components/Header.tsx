@@ -27,9 +27,9 @@ const Header: React.FC = (): JSX.Element => {
     }, []);
 
     const handleLogout = (): void => {
-        Cookies.remove("authToken", { path: '/' });
+        Cookies.remove("authToken", { path: '/login' });
         setIsAuthenticated(false);
-        navigate("/");
+        navigate("/login");
         // Dispatch auth change event
         window.dispatchEvent(new Event('authChange'));
     };
@@ -37,11 +37,11 @@ const Header: React.FC = (): JSX.Element => {
     return (
         <header className="header">
             <div className="header-container">
-                <Link to="/main" className="logo">
+                <Link to="/" className="logo">
                     JobHunt
                 </Link>
                 <nav className="nav-links">
-                    <Link to="/main">Home</Link>
+                    <Link to="/">Home</Link>
                     {isAuthenticated ? (
                         <>
                             <Link to="/profile">Profile</Link>
@@ -49,7 +49,7 @@ const Header: React.FC = (): JSX.Element => {
                         </>
                     ) : (
                         <>
-                            <Link to="/">Login</Link>
+                            <Link to="/login">Login</Link>
                         </>
                     )}
                 </nav>

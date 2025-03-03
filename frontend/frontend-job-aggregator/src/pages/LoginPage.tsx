@@ -116,7 +116,7 @@ const LoginPage: React.FC = () => {
             if (!isComplete) {
                 navigate('/complete-profile');
             } else {
-                navigate('/main', {
+                navigate('/', {
                     state: {
                         message: 'Login Successful.'
                     }

@@ -305,7 +305,7 @@ const SignupPage: React.FC = () => {
                 <div className="signup-section">
                     <h3>Already have an account?</h3>
                     <p>Login to continue your journey</p>
-                    <button onClick={() => navigate('/')} className="signup-button">
+                    <button onClick={() => navigate('/login')} className="signup-button">
                         Login
                     </button>
                 </div>

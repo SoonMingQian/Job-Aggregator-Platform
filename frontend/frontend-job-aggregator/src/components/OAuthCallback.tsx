@@ -17,7 +17,7 @@ const OAuthCallback: React.FC = () => {
                 const action = searchParams.get('action'); 
                 if (!token) {
                     setErrorMessage('Authentication failed: No token received');
-                    setTimeout(() => navigate('/'), 1500);
+                    setTimeout(() => navigate('/login'), 1500);
                     return;
                 }
 
@@ -67,7 +67,7 @@ const OAuthCallback: React.FC = () => {
                 } else {
                     // Navigate to main page
                     setTimeout(() => {
-                        navigate('/main', {
+                        navigate('/', {
                             state: { 
                                 message: successMessage || 'Authentication successful'
                             }
@@ -77,7 +77,7 @@ const OAuthCallback: React.FC = () => {
             } catch (error) {
                 console.error('Error during OAuth callback processing:', error);
                 setErrorMessage('Authentication process failed');
-                setTimeout(() => navigate('/'), 1500);
+                setTimeout(() => navigate('/login'), 1500);
             } finally {
                 setIsLoading(false);
             }
