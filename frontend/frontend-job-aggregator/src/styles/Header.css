@@ -4,7 +4,8 @@
     padding: 1rem 2rem;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1000; /* Increase z-index to be higher than other elements */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Add subtle shadow for visual separation */
 }
 
 .header-container {

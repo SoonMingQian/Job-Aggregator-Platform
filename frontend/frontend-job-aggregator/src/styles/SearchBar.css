@@ -4,6 +4,8 @@
     margin-bottom: 40px;
     border-bottom: 1px solid #eee;
     box-shadow: none;
+    position: relative; /* Add this */
+    z-index: 100; /* Lower than header but higher than other content */
 }
 
 .search-section h1 {
