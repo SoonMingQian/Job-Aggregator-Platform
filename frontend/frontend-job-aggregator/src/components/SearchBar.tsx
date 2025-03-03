@@ -7,13 +7,15 @@ interface SearchBarProps {
     initialLocation?: string;
     isLoading?: boolean;
     onSearch?: (title: string, location: string) => void;
+    onFocus?: () => void;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
     initialTitle = '',
     initialLocation = '',
     isLoading = false,
-    onSearch
+    onSearch,
+    onFocus
 }) => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -79,6 +81,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                     placeholder='Job Title'
                     value={formData.title}
                     onChange={handleInputChange}
+                    onFocus={onFocus}
                     className='search-input'
                 />
                 <input
@@ -87,6 +90,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                     placeholder="Location..."
                     value={formData.location}
                     onChange={handleInputChange}
+                    onFocus={onFocus}
                     className="search-input"
                 />
                 <button type="submit" className="search-button" disabled={isLoading}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
@@ -16,6 +16,13 @@ interface Job {
     matchScore?: number;
     isCalculating?: boolean;
     platform: string;
+}
+
+interface SearchHistoryItem {
+    id: string;
+    title: string;
+    location: string;
+    timestamp: string;
 }
 
 // Add this utility function at the top of your file
@@ -38,6 +45,9 @@ const SearchResultPage: React.FC = (): JSX.Element => {
     const [expandedJob, setExpandedJob] = useState<string | null>(null);
     const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
     const [isRequesting, setIsRequesting] = useState<boolean>(false);
+    const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
+    const [showSearchHistory, setShowSearchHistory] = useState(false);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
 
     const jobsPerPage: number = 20;
     const title: string = searchParams.get('title') || '';
@@ -238,7 +248,83 @@ const SearchResultPage: React.FC = (): JSX.Element => {
         let isActive = true;
         let localPollInterval: NodeJS.Timeout | null = null;
 
+        // Load search history from cookies
+        const loadSearchHistory = () => {
+            const historyString = Cookies.get('searchHistory');
+            console.log("Retrieved search history from cookies:", historyString);
+            if (historyString) {
+                try {
+                    const history = JSON.parse(historyString);
+                    console.log("Parsed history:", history);
+                    setSearchHistory(Array.isArray(history) ? history : []);
+                } catch (e) {
+                    console.error('Error parsing search history from cookie:', e);
+                    setSearchHistory([]);
+                }
+            }
+        };
+        
+        loadSearchHistory();
+
+        // Add click outside handler for search history
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setShowSearchHistory(false);
+            }
+        };
+        
+        document.addEventListener('mousedown', handleClickOutside);
+
         if (title || location) {
+            // Save this search to history if it came from URL params
+            if (title || location) {
+                const saveCurrentSearch = () => {
+                    const id = Date.now().toString();
+                    const timestamp = new Date().toISOString();
+                    
+                    const newHistoryItem: SearchHistoryItem = {
+                        id,
+                        title,
+                        location,
+                        timestamp
+                    };
+                    
+                    // Get existing history
+                    const historyString = Cookies.get('searchHistory');
+                    let existingHistory: SearchHistoryItem[] = [];
+                    
+                    if (historyString) {
+                        try {
+                            existingHistory = JSON.parse(historyString);
+                            if (!Array.isArray(existingHistory)) existingHistory = [];
+                        } catch (e) {
+                            console.error('Error parsing existing history:', e);
+                        }
+                    }
+                    
+                    // Only add if it doesn't already exist
+                    if (!existingHistory.some(item => item.title === title && item.location === location)) {
+                        const updatedHistory = [
+                            newHistoryItem,
+                            ...existingHistory.slice(0, 5)
+                        ];
+                        
+                        try {
+                            Cookies.set('searchHistory', JSON.stringify(updatedHistory), {
+                                expires: 30,
+                                sameSite: 'strict',
+                                secure: window.location.protocol === 'https:',
+                            });
+                            setSearchHistory(updatedHistory);
+                        } catch (e) {
+                            console.error('Error saving search history:', e);
+                        }
+                    }
+                };
+                
+                saveCurrentSearch();
+            }
+
             (async () => {
                 if (!isActive) return;
 
@@ -249,7 +335,6 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     if (isActive && fetchedJobs && fetchedJobs.length > 0) {
                         const needScores = fetchedJobs.some(job => job.matchScore === undefined);
                         if (needScores) {
-
                             const token = Cookies.get('authToken');
                             const profileResponse = await fetch('http://localhost:8081/api/user/userId', {
                                 headers: { 'Authorization': token as string }
@@ -291,6 +376,8 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 clearInterval(pollInterval);
                 setPollInterval(null);
             }
+            
+            document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [title, location]); // Keep this dependency array
 
@@ -308,6 +395,47 @@ const SearchResultPage: React.FC = (): JSX.Element => {
     );
 
     const handleSearch = (title: string, location: string) => {
+        // Save this search to history
+        const saveSearchHistory = (title: string, location: string) => {
+            if (!title && !location) return;
+            
+            const id = Date.now().toString();
+            const timestamp = new Date().toISOString();
+            
+            const newHistoryItem: SearchHistoryItem = {
+                id,
+                title,
+                location,
+                timestamp
+            };
+            
+            const updatedHistory = [
+                newHistoryItem,
+                ...searchHistory.filter(item => 
+                    !(item.title === title && item.location === location)
+                ).slice(0, 9)
+            ];
+            
+            setSearchHistory(updatedHistory);
+            
+            try {
+                Cookies.set('searchHistory', JSON.stringify(updatedHistory), {
+                    expires: 30,
+                    sameSite: 'strict',
+                    secure: window.location.protocol === 'https:',
+                });
+                console.log("Saved search history:", Cookies.get('searchHistory'));
+            } catch (e) {
+                console.error('Error saving search history to cookie:', e);
+            }
+        };
+        
+        // Save search first
+        saveSearchHistory(title, location);
+        
+        // Hide search history dropdown
+        setShowSearchHistory(false);
+        
         // Get browser info
         const browserInfo = {
             platform: navigator.platform || 'unknown',
@@ -338,6 +466,11 @@ const SearchResultPage: React.FC = (): JSX.Element => {
         navigate(`/search?${params}`);
     };
 
+    const clearSearchHistory = () => {
+        setSearchHistory([]);
+        Cookies.remove('searchHistory');
+    };
+
     return (
         <div className="main-page">
             <div className='search-results-header'>
@@ -346,12 +479,53 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 </button>
             </div>
 
-            <SearchBar
-                initialTitle={title}
-                initialLocation={location}
-                isLoading={isLoading}
-                onSearch={handleSearch}
-            />
+            <div className='search-container' ref={searchContainerRef}>
+                <SearchBar
+                    initialTitle={title}
+                    initialLocation={location}
+                    isLoading={isLoading}
+                    onSearch={handleSearch}
+                    onFocus={() => setShowSearchHistory(true)} // Add this prop
+                />
+
+                {/* Add search history dropdown */}
+                {showSearchHistory && searchHistory.length > 0 && (
+                    <div className="search-history">
+                        <div className="search-history-header">
+                            <h3>Recent Searches</h3>
+                            <button
+                                className="clear-history-button"
+                                onClick={clearSearchHistory}
+                            >
+                                Clear All
+                            </button>
+                        </div>
+                        <ul className="search-history-list">
+                            {searchHistory.map((item) => (
+                                <li key={item.id} className="search-history-item">
+                                    <button
+                                        onClick={() => handleSearch(item.title, item.location)}
+                                        className="search-history-button"
+                                    >
+                                        <div className="search-history-terms">
+                                            <span className="search-term">{item.title}</span>
+                                            {item.location && (
+                                                <>
+                                                    <span className="search-separator">in</span>
+                                                    <span className="search-term">{item.location}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <span className="search-history-time">
+                                            {new Date(item.timestamp).toLocaleDateString()}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
 
             {isLoading ? (
                 <div className="loading-container">

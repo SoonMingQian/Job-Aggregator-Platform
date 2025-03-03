@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
 import DOMPurify from 'dompurify';
 import Cookies from 'js-cookie';
+import { title } from 'process';
 
 interface Job {
     jobId: string;
@@ -37,6 +38,13 @@ interface NavigatorUserAgentData {
     mobile: boolean;
 }
 
+interface SearchHistoryItem {
+    id: string;
+    title: string;
+    location: string;
+    timestamp: string;
+}
+
 interface Navigator {
     userAgentData?: NavigatorUserAgentData;
 }
@@ -51,6 +59,9 @@ const MainPage: React.FC = () => {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [expandedJob, setExpandedJob] = useState<string | null>(null);
+    const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
+    const [showSearchHistory, setShowSearchHistory] = useState(false)
+    const searchContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const initializeJobs = async () => {
@@ -81,8 +92,91 @@ const MainPage: React.FC = () => {
                 setIsLoading(false);
             }
         };
+
+        const loadSearchHistory = () => {
+            const historyString = Cookies.get('searchHistory');
+            console.log("Retrieved search history from cookies:", historyString);
+            if (historyString) {
+                try {
+                    const history = JSON.parse(historyString);
+                    console.log("Parsed history:", history);
+                    setSearchHistory(Array.isArray(history) ? history : []);
+                } catch (e) {
+                    console.error('Error parsing search history from cookie:', e);
+                    setSearchHistory([]);
+                }
+            }
+        }
+
+        loadSearchHistory();
         initializeJobs();
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setShowSearchHistory(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [navigate]);
+
+    useEffect(() => {
+        // Test cookie functionality
+        Cookies.set('testCookie', 'working');
+        console.log("Test cookie:", Cookies.get('testCookie'));
     }, []);
+
+    const saveSearchHistory = (title: string, location: string) => {
+        if (!title && !location) return;
+
+        const id = Date.now().toString();
+        const timestamp = new Date().toISOString();
+
+        const newHistoryItem: SearchHistoryItem = {
+            id,
+            title,
+            location,
+            timestamp
+        };
+
+        const updatedHistory = [
+            newHistoryItem,
+            ...searchHistory.filter(item =>
+                !(item.title === title && item.location === location)
+            ).slice(0, 5)
+        ];
+
+        setSearchHistory(updatedHistory);
+
+        try {
+            Cookies.set('searchHistory', JSON.stringify(updatedHistory), {
+                expires: 30,
+                sameSite: 'strict',
+                secure: window.location.protocol === 'https:',
+            });
+            // After trying to save the cookie
+            console.log("After saving, cookie value:", Cookies.get('searchHistory'));
+        } catch (e) {
+            console.error('Error saving search history to cookie:', e);
+
+            if (updatedHistory.length > 4) {
+                const shorterHistory = updatedHistory.slice(0, 3);
+                try {
+                    Cookies.set('searchHistory', JSON.stringify(shorterHistory), {
+                        expires: 30,
+                        sameSite: 'strict',
+                        secure: window.location.protocol === 'https:',
+                    });
+                } catch (e) {
+                    console.error('Failed to save even shorter history:', e);
+                }
+            }
+        }
+    };
+
 
     const getBrowserInfo = (): BrowserInfo => {
         return {
@@ -98,6 +192,12 @@ const MainPage: React.FC = () => {
     };
 
     const handleSearch = (title: string, location: string) => {
+        // First, save this search to history
+        saveSearchHistory(title, location);
+
+        // Hide search history after selecting
+        setShowSearchHistory(false);
+
         const browserInfo = getBrowserInfo();
         const searchParams = new URLSearchParams({
             title: title,
@@ -113,6 +213,11 @@ const MainPage: React.FC = () => {
         });
 
         navigate(`/search?${searchParams}`);
+    };
+
+    const clearSearchHistory = () => {
+        setSearchHistory([]);
+        Cookies.remove('searchHistory');
     };
 
     // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,12 +242,52 @@ const MainPage: React.FC = () => {
 
     return (
         <div className='main-page'>
-            <SearchBar
-                initialTitle={searchParams.get('title') || ''}
-                initialLocation={searchParams.get('location') || ''}
-                isLoading={isLoading}
-                onSearch={handleSearch}
-            />
+            <div className='search-container' ref={searchContainerRef}>
+                <SearchBar
+                    initialTitle={searchParams.get('title') || ''}
+                    initialLocation={searchParams.get('location') || ''}
+                    isLoading={isLoading}
+                    onSearch={handleSearch}
+                    onFocus={() => setShowSearchHistory(true)}
+                />
+
+                {showSearchHistory && searchHistory.length > 0 && (
+                    <div className="search-history">
+                        <div className="search-history-header">
+                            <h3>Recent Searches</h3>
+                            <button
+                                className="clear-history-button"
+                                onClick={clearSearchHistory}
+                            >
+                                Clear All
+                            </button>
+                        </div>
+                        <ul className="search-history-list">
+                            {searchHistory.map((item) => (
+                                <li key={item.id} className="search-history-item">
+                                    <button
+                                        onClick={() => handleSearch(item.title, item.location)}
+                                        className="search-history-button"
+                                    >
+                                        <div className="search-history-terms">
+                                            <span className="search-term">{item.title}</span>
+                                            {item.location && (
+                                                <>
+                                                    <span className="search-separator">in</span>
+                                                    <span className="search-term">{item.location}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <span className="search-history-time">
+                                            {new Date(item.timestamp).toLocaleDateString()}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
             <div className="jobs-section">
                 <table className='jobs-table'>
                     <thead>
