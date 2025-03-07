@@ -29,6 +29,9 @@ public class Jobs {
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date timestamp;
 	
+	private String searchTitle;
+	private String searchLocation;
+	
 	@ElementCollection
 	@CollectionTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"))
     @Column(name = "skill")
@@ -105,4 +108,22 @@ public class Jobs {
 	public void setPlatform(String platform) {
 		this.platform = platform;
 	}
+
+	public String getSearchTitle() {
+		return searchTitle;
+	}
+
+	public void setSearchTitle(String searchTitle) {
+		this.searchTitle = searchTitle;
+	}
+
+	public String getSearchLocation() {
+		return searchLocation;
+	}
+
+	public void setSearchLocation(String searchLocation) {
+		this.searchLocation = searchLocation;
+	}
+	
+	
 }

@@ -19,7 +19,7 @@ import com.example.storage.services.JobsService;
 import com.example.storage.services.RedisService;
 
 @RestController
-@RequestMapping("/api/redis")
+@RequestMapping("/api/jobs")
 @CrossOrigin(origins = "*")
 public class JobsController {
 
@@ -44,9 +44,17 @@ public class JobsController {
         }
     }
     
-    @GetMapping("jobs/all")
+    @GetMapping("all")
     public ResponseEntity<List<Jobs>> getAllJobs() {
     	List<Jobs> jobs = jobsService.getAllJobs();
     	return ResponseEntity.ok(jobs);
+    }
+    
+    @GetMapping("relevant")
+    public ResponseEntity<List<Jobs>> getRelevantJobs(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String location) {
+        List<Jobs> jobs = jobsService.getRelevantJobs(title, location);
+        return ResponseEntity.ok(jobs);
     }
 }
