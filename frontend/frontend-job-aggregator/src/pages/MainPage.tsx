@@ -63,7 +63,35 @@ const MainPage: React.FC = () => {
     const searchContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        const initializeJobs = async () => {
+        const initialize = async () => {
+            // Load search history first and wait for it to complete
+            const historyString = Cookies.get('searchHistory');
+            console.log("Retrieved search history from cookies:", historyString);
+            
+            let recentSearch = null;
+            if (historyString) {
+                try {
+                    const history = JSON.parse(historyString);
+                    console.log("Parsed history:", history);
+                    
+                    if (Array.isArray(history) && history.length > 0) {
+                        // Sort by timestamp (newest first) to ensure we get the most recent
+                        const sortedHistory = [...history].sort((a, b) => 
+                            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                        );
+                        
+                        // Set the state (won't be immediately available)
+                        setSearchHistory(sortedHistory);
+                        
+                        // But we can use the local variable right away
+                        recentSearch = sortedHistory[0];
+                    }
+                } catch (e) {
+                    console.error('Error parsing search history from cookie:', e);
+                }
+            }
+            
+            // Now initialize jobs with the search history data we have
             setIsLoading(true);
             try {
                 const token = Cookies.get('authToken');
@@ -72,12 +100,21 @@ const MainPage: React.FC = () => {
                     return;
                 }
 
-                const response = await fetch('http://localhost:8080/api/redis/jobs/all', {
+                // Use the search history we just loaded
+                const searchTitle = recentSearch?.title || "";
+                const searchLocation = recentSearch?.location || "";
+
+                console.log(`Using recent search: title=${searchTitle}, location=${searchLocation}`);
+
+                // Build the URL with query parameters
+                const url = `http://localhost:8080/api/jobs/relevant?title=${encodeURIComponent(searchTitle)}&location=${encodeURIComponent(searchLocation)}`;
+
+                const response = await fetch(url, {
                     headers: {
                         'Authorization': token
                     }
-                })
-
+                });
+                
                 if (!response.ok) {
                     throw new Error('Failed to fetch jobs');
                 }
@@ -92,23 +129,7 @@ const MainPage: React.FC = () => {
             }
         };
 
-        const loadSearchHistory = () => {
-            const historyString = Cookies.get('searchHistory');
-            console.log("Retrieved search history from cookies:", historyString);
-            if (historyString) {
-                try {
-                    const history = JSON.parse(historyString);
-                    console.log("Parsed history:", history);
-                    setSearchHistory(Array.isArray(history) ? history : []);
-                } catch (e) {
-                    console.error('Error parsing search history from cookie:', e);
-                    setSearchHistory([]);
-                }
-            }
-        }
-
-        loadSearchHistory();
-        initializeJobs();
+        initialize();
 
         const handleClickOutside = (event: MouseEvent) => {
             if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -121,12 +142,6 @@ const MainPage: React.FC = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         }
     }, [navigate]);
-
-    useEffect(() => {
-        // Test cookie functionality
-        Cookies.set('testCookie', 'working');
-        console.log("Test cookie:", Cookies.get('testCookie'));
-    }, []);
 
     const saveSearchHistory = (title: string, location: string) => {
         if (!title && !location) return;
@@ -155,6 +170,7 @@ const MainPage: React.FC = () => {
                 expires: 30,
                 sameSite: 'strict',
                 secure: window.location.protocol === 'https:',
+                path: '/'
             });
             // After trying to save the cookie
             console.log("After saving, cookie value:", Cookies.get('searchHistory'));
@@ -168,6 +184,7 @@ const MainPage: React.FC = () => {
                         expires: 30,
                         sameSite: 'strict',
                         secure: window.location.protocol === 'https:',
+                        path: '/'
                     });
                 } catch (e) {
                     console.error('Failed to save even shorter history:', e);
@@ -216,7 +233,7 @@ const MainPage: React.FC = () => {
 
     const clearSearchHistory = () => {
         setSearchHistory([]);
-        Cookies.remove('searchHistory');
+        Cookies.remove('searchHistory', { path: '/' });
     };
 
     // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
