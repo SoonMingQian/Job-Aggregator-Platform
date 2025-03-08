@@ -48,6 +48,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
     const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
     const [showSearchHistory, setShowSearchHistory] = useState(false);
     const searchContainerRef = useRef<HTMLDivElement>(null);
+    const [pendingRequests, setPendingRequests] = useState<Record<string, boolean>>({});
 
     const jobsPerPage: number = 20;
     const title: string = searchParams.get('title') || '';
@@ -70,13 +71,24 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 console.log('Received match scores:', matchScores);
 
                 setJobs(prevJobs => {
-                    const updatedJobs = prevJobs.map(job => ({
-                        ...job,
-                        matchScore: matchScores[job.jobId] || undefined,
-                        isCalculating: !matchScores[job.jobId]
-                    }));
+                    const updatedJobs = prevJobs.map(job => {
+                        // Check if the key exists in matchScores object
+                        const hasScore = Object.prototype.hasOwnProperty.call(matchScores, job.jobId);
+                        
+                        return {
+                            ...job,
+                            // If the key exists, parse the score, otherwise keep undefined
+                            matchScore: hasScore ? parseFloat(matchScores[job.jobId]) : undefined,
+                            // Only show calculating if we don't have a score yet
+                            isCalculating: !hasScore
+                        };
+                    });
 
-                    const allScoresReceived = updatedJobs.every(job => job.matchScore !== undefined);
+                    // Only consider jobs with keys in matchScores as having received scores
+                    const allScoresReceived = updatedJobs.every(job => 
+                        Object.prototype.hasOwnProperty.call(matchScores, job.jobId)
+                    );
+                    
                     console.log('All scores received:', allScoresReceived);
 
                     if (allScoresReceived && pollInterval) {
@@ -186,6 +198,101 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     try {
                         console.log(`Fetching from ${endpoint.name} (attempt ${attempt + 1}/${retries + 1})`);
                         const response = await fetch(endpoint.url, { headers: endpoint.headers });
+                        
+                        // Special handling for 202 (request in progress)
+                        if (response.status === 202) {
+                            console.log(`${endpoint.name} reported request already in progress (202)`);
+                            
+                            const data = await response.json();
+                            console.log(`${endpoint.name} message:`, data.message);
+                            
+                            // Update pending requests state to show user feedback
+                            setPendingRequests(prev => ({
+                                ...prev,
+                                [endpoint.name]: true
+                            }));
+                            
+                            // Start polling for results with longer delays
+                            const pollForResults = async (maxAttempts = 12, initialDelay = 10000) => {
+                                for (let pollAttempt = 0; pollAttempt < maxAttempts; pollAttempt++) {
+                                    // Exponential backoff - wait longer between each attempt
+                                    const delay = initialDelay + (pollAttempt * 5000);
+                                    console.log(`Polling ${endpoint.name} for results (attempt ${pollAttempt + 1}/${maxAttempts}) - waiting ${delay/1000}s...`);
+                                    
+                                    await new Promise(resolve => setTimeout(resolve, delay));
+                                    
+                                    try {
+                                        const pollResponse = await fetch(endpoint.url, { 
+                                            headers: { 
+                                                ...endpoint.headers,
+                                                'X-Poll-Attempt': `${pollAttempt + 1}`,
+                                                'Cache-Control': 'no-cache' 
+                                            } 
+                                        });
+                                        
+                                        if (pollResponse.status === 200) {
+                                            const pollData = await pollResponse.json();
+                                            
+                                            if (pollData.jobs && Array.isArray(pollData.jobs)) {
+                                                console.log(`${endpoint.name} poll successful! Got ${pollData.jobs.length} jobs`);
+                                                const jobsWithMetadata = pollData.jobs.map((job: any) => {
+                                                    // Check if matchScore is explicitly defined in the job object
+                                                    const hasScore = Object.prototype.hasOwnProperty.call(job, 'matchScore');
+                                                    
+                                                    return {
+                                                        ...job,
+                                                        // Only parse the score if it exists
+                                                        matchScore: hasScore ? parseFloat(job.matchScore) : undefined,
+                                                        // Only show calculating if we don't have a score
+                                                        isCalculating: !hasScore
+                                                    };
+                                                });
+                                                
+                                                combinedJobs.push(...jobsWithMetadata);
+                                                
+                                                // Clear pending status
+                                                setPendingRequests(prev => ({
+                                                    ...prev,
+                                                    [endpoint.name]: false
+                                                }));
+                                                
+                                                return true; // Successfully got jobs
+                                            }
+                                        } else if (pollResponse.status === 202) {
+                                            // Still processing, continue polling
+                                            console.log(`${endpoint.name} still processing, will poll again in ${delay/1000}s...`);
+                                        } else {
+                                            // Error or unexpected response
+                                            console.error(`${endpoint.name} polling failed with status: ${pollResponse.status}`);
+                                            break;
+                                        }
+                                    } catch (error) {
+                                        console.error(`Error polling ${endpoint.name}:`, error);
+                                        // Don't break on network errors, just continue polling
+                                    }
+                                }
+                                
+                                console.log(`${endpoint.name} polling timed out after ${maxAttempts} attempts`);
+                                
+                                // Clear pending status but with an error note
+                                setPendingRequests(prev => ({
+                                    ...prev,
+                                    [endpoint.name]: false
+                                }));
+                                
+                                return false;
+                            };
+                            
+                            // Wait for polling to complete
+                            const success = await pollForResults();
+                            
+                            if (success) {
+                                return; // Exit the retry loop
+                            } else {
+                                errors.push(`${endpoint.name}: Request is taking too long to process. The results may appear later.`);
+                                return; // Exit anyway as we've done our best to wait
+                            }
+                        }
 
                         if (!response.ok) {
                             throw new Error(`${endpoint.name} returned status ${response.status}`);
@@ -201,13 +308,18 @@ const SearchResultPage: React.FC = (): JSX.Element => {
 
                         // Add jobs to the combined list
                         if (data.jobs && Array.isArray(data.jobs)) {
-                            const jobsWithMetadata = data.jobs.map((job: any) => ({
-                                ...job,
-                                // Only set matchScore to undefined if it doesn't already exist
-                                matchScore: job.matchScore !== undefined ? parseFloat(job.matchScore) : undefined,
-                                // Only set isCalculating if matchScore doesn't exist
-                                isCalculating: job.matchScore === undefined
-                            }));
+                            const jobsWithMetadata = data.jobs.map((job: any) => {
+                                // Check if matchScore is explicitly defined in the job object
+                                const hasScore = Object.prototype.hasOwnProperty.call(job, 'matchScore');
+                                
+                                return {
+                                    ...job,
+                                    // Only parse the score if it exists
+                                    matchScore: hasScore ? parseFloat(job.matchScore) : undefined,
+                                    // Only show calculating if we don't have a score
+                                    isCalculating: !hasScore
+                                };
+                            });
 
                             combinedJobs.push(...jobsWithMetadata);
                         }
@@ -549,6 +661,20 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 </div>
             ) : (
                 <>
+                    {/* Pending requests indicator */}
+                    {Object.keys(pendingRequests).some(key => pendingRequests[key]) && (
+                        <div className="pending-requests-banner">
+                            <div className="mini-loader"></div>
+                            <div className="pending-text">
+                                <strong>Scraping in progress:</strong> Still collecting jobs from {Object.keys(pendingRequests)
+                                    .filter(key => pendingRequests[key])
+                                    .join(', ')}
+                                <br />
+                                <span className="pending-subtext">Web scraping typically takes 1-3 minutes. Results will appear automatically when ready.</span>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Always show error message if there is an error */}
                     {error && (
                         <div className="error-container">
@@ -586,6 +712,8 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                                         onClick={() => {
                                             setError('');
                                             setIsLoading(true);
+                                            // Show a message that this could take a while
+                                            alert("Restarting search. Web scraping can take 1-3 minutes to complete.");
                                             fetchSearchResults().catch(err => {
                                                 console.error("Retry failed:", err);
                                                 setError(err instanceof Error ? err.message : "Failed to fetch results on retry");
@@ -628,10 +756,10 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                                                 <td>{job.company}</td>
                                                 <td>{job.location}</td>
                                                 <td>
-                                                    {job.matchScore === undefined ? (
+                                                    {job.isCalculating ? (
                                                         <span className="calculating">Calculating...</span>
                                                     ) : (
-                                                        `${job.matchScore.toFixed(2)}%`
+                                                        `${job.matchScore?.toFixed(2) || '0.00'}%`
                                                     )}
                                                 </td>
                                                 <td>{job.platform}</td>
@@ -681,8 +809,34 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     
                     {!isLoading && jobs.length === 0 && !error && (
                         <div className="no-results-message">
+                            <svg className="no-results-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                <line x1="11" y1="8" x2="11" y2="14"></line>
+                                <line x1="8" y1="11" x2="14" y2="11"></line>
+                            </svg>
                             <h3>No jobs found for your search</h3>
-                            <p>Try adjusting your search terms or location for more results.</p>
+                            <p>We couldn't find any jobs matching "{title}" in {location}.</p>
+                            
+                            <ul className="suggestions">
+                                <li>Check if your search terms are spelled correctly</li>
+                                <li>Try using more general keywords (e.g. "developer" instead of "react developer")</li>
+                                <li>Try another location or remove the location filter</li>
+                                <li>Consider different job titles that might use different terminology</li>
+                            </ul>
+                            
+                            <button 
+                                className="search-again-button"
+                                onClick={() => {
+                                    // Focus the search bar
+                                    const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+                                    if (searchInput) {
+                                        searchInput.focus();
+                                    }
+                                }}
+                            >
+                                Modify Search
+                            </button>
                         </div>
                     )}
                 </>
