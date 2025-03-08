@@ -304,6 +304,13 @@ const MainPage: React.FC = () => {
                     </div>
                 )}
             </div>
+            
+            <div className="recommended-section">
+                <div className="section-header">
+                    <h2>Recommended Jobs For You</h2>
+                </div>
+            </div>
+            
             <div className="jobs-section">
                 <table className='jobs-table'>
                     <thead>
