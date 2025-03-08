@@ -20,6 +20,7 @@ class JobsIEScraper:
         self.redis_client = self.init_redis()
         self.producer_analysis = self.create_kafka_producer()
         self.producer_storage = self.create_kafka_producer()
+        self.producer_matching = self.create_kafka_producer()
 
     def create_kafka_producer(self, retries=5):
         for attempt in range(retries):
@@ -59,6 +60,8 @@ class JobsIEScraper:
 
         if cached_jobs:
             jobs = []
+            missing_matches = False
+
             for job_key in cached_jobs:
                 job_data = self.redis_client.hgetall(job_key)
 
@@ -69,6 +72,19 @@ class JobsIEScraper:
                     if match_score is not None:
                         logger.info(f"Found match score {match_score} for job {job_key}")
                         job_data['matchScore'] = float(match_score)
+                    else:
+                        missing_matches = True
+
+                        try:
+                            logger.info(f"Job {job_key} already has skills, sending directly to matching for user {user_id}")
+                            # Send directly to the matching topic using the existing producer
+                            self.producer_matching.send('matching', value={
+                                'jobId': job_key,
+                                'userId': user_id
+                            })
+                            self.producer_matching.flush()
+                        except Exception as e:
+                            logger.error(f"Error sending job {job_key} to matching: {e}")
                 jobs.append(job_data)
             logger.info(f"Found {len(jobs)} jobs in cache" + (f" with {sum(1 for job in jobs if 'matchScore' in job)} match scores" if user_id else ""))
             return jobs
@@ -157,20 +173,27 @@ class JobsIEScraper:
         try:
             await page.wait_for_selector('article.res-1mik8pn', timeout=5000)
             job_cards = await page.query_selector_all('article.res-1mik8pn')
-            
+            logger.info(f"Found {len(job_cards)} job cards with selector 'article.res-1mik8pn'")
+
             # Collect all job URLs
             job_urls = []
-            for card in job_cards:
+            for i, card in enumerate(job_cards):
                 try:
+                    logger.info(f"Processing job card {i+1}/{len(job_cards)}")
                     job_link = await card.query_selector('a.res-1oxi4gs')
                     if job_link:
                         href = await job_link.get_attribute('href')
                         full_url = f"{self.base_url}{href}"
+                        logger.info(f"Found job URL: {full_url}")
                         if full_url not in processed_urls:
                             job_urls.append(full_url)
+                        else:
+                            logger.info(f"URL already processed: {full_url}")
+                    else:
+                        logger.warning(f"No link found for job card {i+1}")
                 except Exception as e:
-                    logger.error(f"Error getting job URL: {e}")
-
+                    logger.error(f"Error getting job URL for card {i+1}: {e}")
+            logger.info(f"Collected {len(job_urls)} unique job URLs to process")
             # Process jobs concurrently in batches
             batch_size = 2
             for i in range(0, len(job_urls), batch_size):
@@ -301,12 +324,14 @@ class JobsIEScraper:
                                     'jobDescription': job['jobDescription'],  
                                     'applyLink': job['applyLink'], 
                                     'timestamp': datetime.now().isoformat(),
-                                    'platform': "JobsIE"
+                                    'platform': "JobsIE",
+                                    'searchTitle': title,
+                                    'searchLocation': job_location
                                 }  
                                 # Store in Redis
                                 self.store_job_listing(formatted_job, title, job_location)
                                 self.producer_analysis.send('analysis', value={
-                                    'jobId': job['jobId'], 
+                                    'jobId': formatted_job['jobId'], 
                                     'jobDescription': job['jobDescription'],
                                     'userId': user_id
                                     })
@@ -340,12 +365,14 @@ class JobsIEScraper:
                                                 'jobDescription': job['jobDescription'],  
                                                 'applyLink': job['applyLink'], 
                                                 'timestamp': datetime.now().isoformat(),
-                                                'platform': "JobsIE"
+                                                'platform': "JobsIE",
+                                                'searchTitle': title,
+                                                'searchLocation': job_location
                                             } 
                                             # Store in Redis
                                             self.store_job_listing(formatted_job, title, job_location)
                                             self.producer_analysis.send('analysis', value={
-                                                'jobId': job['jobId'], 
+                                                'jobId': formatted_job['jobId'],
                                                 'jobDescription': job['jobDescription'],
                                                 'userId': user_id
                                                 })
@@ -395,6 +422,9 @@ scraper = JobsIEScraper()
 
 @app.route('/jobsie', methods=['GET'])
 def jobsie():
+    # Clear the scraper's processed URLs for each new request
+    scraper.processed_urls = set()
+
     title = request.args.get('title')
     job_location = request.args.get('job_location')
     user_id = request.args.get('userId')
