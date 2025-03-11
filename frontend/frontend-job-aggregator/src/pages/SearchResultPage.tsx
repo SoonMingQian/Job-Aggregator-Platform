@@ -5,6 +5,7 @@ import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
 import DOMPurify from 'dompurify';
 import Cookies from 'js-cookie';
+import { useAuthFetch } from '../hooks/useAuthFetch';
 
 interface Job {
     jobId: string;
@@ -37,7 +38,7 @@ const debounce = (func: Function, delay: number) => {
 const SearchResultPage: React.FC = (): JSX.Element => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-
+    const { authFetch } = useAuthFetch();
     const [jobs, setJobs] = useState<Job[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
@@ -49,21 +50,30 @@ const SearchResultPage: React.FC = (): JSX.Element => {
     const [showSearchHistory, setShowSearchHistory] = useState(false);
     const searchContainerRef = useRef<HTMLDivElement>(null);
     const [pendingRequests, setPendingRequests] = useState<Record<string, boolean>>({});
+    const [sortField, setSortField] = useState<keyof Job | null>(null);
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
     const jobsPerPage: number = 20;
     const title: string = searchParams.get('title') || '';
     const location: string = searchParams.get('location') || '';
 
-    const pollForScores = async (userId: string, token: string) => {
+    const handleSort = (field: keyof Job) => {
+        // If clicking the same field, toggle direction
+        if (field === sortField) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            // Default to descending for match scores, ascending for everything else
+            setSortField(field);
+            setSortDirection(field === 'matchScore' ? 'desc' : 'asc');
+        }
+    };
+
+    const pollForScores = async (userId: string) => {
         try {
             console.log('Polling for match scores...');
-            const matchResponse = await fetch(
-                `http://localhost:8082/api/redis/match/${userId}`,
-                {
-                    headers: {
-                        'Authorization': token
-                    }
-                }
+            // Use authFetch here instead
+            const matchResponse = await authFetch(
+                `http://localhost:8082/api/redis/match/${userId}`
             );
 
             if (matchResponse.ok) {
@@ -74,7 +84,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     const updatedJobs = prevJobs.map(job => {
                         // Check if the key exists in matchScores object
                         const hasScore = Object.prototype.hasOwnProperty.call(matchScores, job.jobId);
-                        
+
                         return {
                             ...job,
                             // If the key exists, parse the score, otherwise keep undefined
@@ -85,10 +95,10 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     });
 
                     // Only consider jobs with keys in matchScores as having received scores
-                    const allScoresReceived = updatedJobs.every(job => 
+                    const allScoresReceived = updatedJobs.every(job =>
                         Object.prototype.hasOwnProperty.call(matchScores, job.jobId)
                     );
-                    
+
                     console.log('All scores received:', allScoresReceived);
 
                     if (allScoresReceived && pollInterval) {
@@ -121,13 +131,14 @@ const SearchResultPage: React.FC = (): JSX.Element => {
             setIsRequesting(true);
             console.log('Starting search for:', { title, location });
             setIsLoading(true);
-            const token = Cookies.get('authToken');
-            if (!token) throw new Error('No token found');
+
+            // Remove these lines - authFetch handles token validation
+            // const token = Cookies.get('authToken');
+            // if (!token) throw new Error('No token found');
 
             console.log('Fetching user profile...');
-            const profileResponse = await fetch('http://localhost:8081/api/user/userId', {
-                headers: { 'Authorization': token }
-            });
+            // Use authFetch instead
+            const profileResponse = await authFetch('http://localhost:8081/api/user/userId');
 
             const profileData = await profileResponse.json();
             console.log('User profile received:', profileData);
@@ -198,47 +209,47 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     try {
                         console.log(`Fetching from ${endpoint.name} (attempt ${attempt + 1}/${retries + 1})`);
                         const response = await fetch(endpoint.url, { headers: endpoint.headers });
-                        
+
                         // Special handling for 202 (request in progress)
                         if (response.status === 202) {
                             console.log(`${endpoint.name} reported request already in progress (202)`);
-                            
+
                             const data = await response.json();
                             console.log(`${endpoint.name} message:`, data.message);
-                            
+
                             // Update pending requests state to show user feedback
                             setPendingRequests(prev => ({
                                 ...prev,
                                 [endpoint.name]: true
                             }));
-                            
+
                             // Start polling for results with longer delays
                             const pollForResults = async (maxAttempts = 12, initialDelay = 10000) => {
                                 for (let pollAttempt = 0; pollAttempt < maxAttempts; pollAttempt++) {
                                     // Exponential backoff - wait longer between each attempt
                                     const delay = initialDelay + (pollAttempt * 5000);
-                                    console.log(`Polling ${endpoint.name} for results (attempt ${pollAttempt + 1}/${maxAttempts}) - waiting ${delay/1000}s...`);
-                                    
+                                    console.log(`Polling ${endpoint.name} for results (attempt ${pollAttempt + 1}/${maxAttempts}) - waiting ${delay / 1000}s...`);
+
                                     await new Promise(resolve => setTimeout(resolve, delay));
-                                    
+
                                     try {
-                                        const pollResponse = await fetch(endpoint.url, { 
-                                            headers: { 
+                                        const pollResponse = await fetch(endpoint.url, {
+                                            headers: {
                                                 ...endpoint.headers,
                                                 'X-Poll-Attempt': `${pollAttempt + 1}`,
-                                                'Cache-Control': 'no-cache' 
-                                            } 
+                                                'Cache-Control': 'no-cache'
+                                            }
                                         });
-                                        
+
                                         if (pollResponse.status === 200) {
                                             const pollData = await pollResponse.json();
-                                            
+
                                             if (pollData.jobs && Array.isArray(pollData.jobs)) {
                                                 console.log(`${endpoint.name} poll successful! Got ${pollData.jobs.length} jobs`);
                                                 const jobsWithMetadata = pollData.jobs.map((job: any) => {
                                                     // Check if matchScore is explicitly defined in the job object
                                                     const hasScore = Object.prototype.hasOwnProperty.call(job, 'matchScore');
-                                                    
+
                                                     return {
                                                         ...job,
                                                         // Only parse the score if it exists
@@ -247,20 +258,20 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                                                         isCalculating: !hasScore
                                                     };
                                                 });
-                                                
+
                                                 combinedJobs.push(...jobsWithMetadata);
-                                                
+
                                                 // Clear pending status
                                                 setPendingRequests(prev => ({
                                                     ...prev,
                                                     [endpoint.name]: false
                                                 }));
-                                                
+
                                                 return true; // Successfully got jobs
                                             }
                                         } else if (pollResponse.status === 202) {
                                             // Still processing, continue polling
-                                            console.log(`${endpoint.name} still processing, will poll again in ${delay/1000}s...`);
+                                            console.log(`${endpoint.name} still processing, will poll again in ${delay / 1000}s...`);
                                         } else {
                                             // Error or unexpected response
                                             console.error(`${endpoint.name} polling failed with status: ${pollResponse.status}`);
@@ -271,21 +282,21 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                                         // Don't break on network errors, just continue polling
                                     }
                                 }
-                                
+
                                 console.log(`${endpoint.name} polling timed out after ${maxAttempts} attempts`);
-                                
+
                                 // Clear pending status but with an error note
                                 setPendingRequests(prev => ({
                                     ...prev,
                                     [endpoint.name]: false
                                 }));
-                                
+
                                 return false;
                             };
-                            
+
                             // Wait for polling to complete
                             const success = await pollForResults();
-                            
+
                             if (success) {
                                 return; // Exit the retry loop
                             } else {
@@ -311,7 +322,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                             const jobsWithMetadata = data.jobs.map((job: any) => {
                                 // Check if matchScore is explicitly defined in the job object
                                 const hasScore = Object.prototype.hasOwnProperty.call(job, 'matchScore');
-                                
+
                                 return {
                                     ...job,
                                     // Only parse the score if it exists
@@ -391,7 +402,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 }
             }
         };
-        
+
         loadSearchHistory();
 
         // Add click outside handler for search history
@@ -400,7 +411,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 setShowSearchHistory(false);
             }
         };
-        
+
         document.addEventListener('mousedown', handleClickOutside);
 
         if (title || location) {
@@ -409,18 +420,18 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 const saveCurrentSearch = () => {
                     const id = Date.now().toString();
                     const timestamp = new Date().toISOString();
-                    
+
                     const newHistoryItem: SearchHistoryItem = {
                         id,
                         title,
                         location,
                         timestamp
                     };
-                    
+
                     // Get existing history
                     const historyString = Cookies.get('searchHistory');
                     let existingHistory: SearchHistoryItem[] = [];
-                    
+
                     if (historyString) {
                         try {
                             existingHistory = JSON.parse(historyString);
@@ -429,14 +440,14 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                             console.error('Error parsing existing history:', e);
                         }
                     }
-                    
+
                     // Only add if it doesn't already exist
                     if (!existingHistory.some(item => item.title === title && item.location === location)) {
                         const updatedHistory = [
                             newHistoryItem,
                             ...existingHistory.slice(0, 5)
                         ];
-                        
+
                         try {
                             Cookies.set('searchHistory', JSON.stringify(updatedHistory), {
                                 expires: 30,
@@ -449,7 +460,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                         }
                     }
                 };
-                
+
                 saveCurrentSearch();
             }
 
@@ -463,10 +474,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     if (isActive && fetchedJobs && fetchedJobs.length > 0) {
                         const needScores = fetchedJobs.some(job => job.matchScore === undefined);
                         if (needScores) {
-                            const token = Cookies.get('authToken');
-                            const profileResponse = await fetch('http://localhost:8081/api/user/userId', {
-                                headers: { 'Authorization': token as string }
-                            });
+                            const profileResponse = await authFetch('http://localhost:8081/api/user/userId');
                             const profileData = await profileResponse.json();
                             const userId = profileData.userId;
 
@@ -475,7 +483,8 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                             // Use this in your interval
                             localPollInterval = setInterval(() => {
                                 if (isActive) {
-                                    debouncedPollForScores(userId, token as string);
+                                    // Remove token parameter since authFetch handles it
+                                    debouncedPollForScores(userId);
                                 }
                             }, 2000);
                             setPollInterval(localPollInterval);
@@ -504,10 +513,10 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 clearInterval(pollInterval);
                 setPollInterval(null);
             }
-            
+
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [title, location]); // Keep this dependency array
+    }, [title, location, authFetch]); // Keep this dependency array
 
     const toggleJobDescription = (jobId: string): void => {
         setExpandedJob(prevId => prevId === jobId ? null : jobId);
@@ -517,7 +526,28 @@ const SearchResultPage: React.FC = (): JSX.Element => {
         navigate('/');
     };
 
-    const currentJobs: Job[] = jobs.slice(
+    // Sort jobs based on current sort settings
+    const sortedJobs = [...jobs].sort((a, b) => {
+        if (sortField === null) return 0;
+
+        // Handle matchScore specially since it might be undefined
+        if (sortField === 'matchScore') {
+            const scoreA = a[sortField] || 0;
+            const scoreB = b[sortField] || 0;
+            return sortDirection === 'asc' ? scoreA - scoreB : scoreB - scoreA;
+        }
+
+        // Handle string comparisons
+        const valueA = String(a[sortField] || '').toLowerCase();
+        const valueB = String(b[sortField] || '').toLowerCase();
+
+        if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+        if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // Then use sortedJobs for pagination instead of jobs
+    const currentJobs = sortedJobs.slice(
         (currentPage - 1) * jobsPerPage,
         currentPage * jobsPerPage
     );
@@ -526,26 +556,26 @@ const SearchResultPage: React.FC = (): JSX.Element => {
         // Save this search to history
         const saveSearchHistory = (title: string, location: string) => {
             if (!title && !location) return;
-            
+
             const id = Date.now().toString();
             const timestamp = new Date().toISOString();
-            
+
             const newHistoryItem: SearchHistoryItem = {
                 id,
                 title,
                 location,
                 timestamp
             };
-            
+
             const updatedHistory = [
                 newHistoryItem,
-                ...searchHistory.filter(item => 
+                ...searchHistory.filter(item =>
                     !(item.title === title && item.location === location)
                 ).slice(0, 9)
             ];
-            
+
             setSearchHistory(updatedHistory);
-            
+
             try {
                 Cookies.set('searchHistory', JSON.stringify(updatedHistory), {
                     expires: 30,
@@ -557,13 +587,13 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 console.error('Error saving search history to cookie:', e);
             }
         };
-        
+
         // Save search first
         saveSearchHistory(title, location);
-        
+
         // Hide search history dropdown
         setShowSearchHistory(false);
-        
+
         // Get browser info
         const browserInfo = {
             platform: navigator.platform || 'unknown',
@@ -684,9 +714,9 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                                     <div className="error-message partial-error">
                                         <span className="error-title">Some results couldn't be loaded:</span>
                                         {error}
-                                        <button 
-                                            className="retry-button" 
-                                            style={{marginLeft: '15px'}}
+                                        <button
+                                            className="retry-button"
+                                            style={{ marginLeft: '15px' }}
                                             onClick={() => {
                                                 setError('');
                                                 setIsLoading(true);
@@ -707,7 +737,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                                         <span className="error-title">Error fetching job results:</span>
                                         {error}
                                     </div>
-                                    <button 
+                                    <button
                                         className="retry-button"
                                         onClick={() => {
                                             setError('');
@@ -726,7 +756,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                             )}
                         </div>
                     )}
-                    
+
                     {/* Always show jobs section if there are jobs */}
                     {jobs.length > 0 && (
                         <div className='jobs-section'>
@@ -734,15 +764,35 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                                 Search Results for <span className="search-term">"{title}"</span> in <span className="location-term">{location}</span>
                                 <span className="search-results-count">{jobs.length} jobs found</span>
                             </div>
-                            
+
                             <table className='jobs-table'>
                                 <thead>
                                     <tr>
-                                        <th>Title</th>
-                                        <th>Company</th>
-                                        <th>Location</th>
-                                        <th>Match Score</th>
-                                        <th>Platform</th>
+                                        <th onClick={() => handleSort('title')}
+                                            className={sortField === 'title' ? `sorted-${sortDirection}` : ''}
+                                        >
+                                            Title
+                                        </th>
+                                        <th onClick={() => handleSort('company')}
+                                            className={sortField === 'company' ? `sorted-${sortDirection}` : ''}
+                                        >
+                                            Company
+                                        </th>
+                                        <th onClick={() => handleSort('location')}
+                                            className={sortField === 'location' ? `sorted-${sortDirection}` : ''}
+                                        >
+                                            Location
+                                        </th>
+                                        <th
+                                            onClick={() => handleSort('matchScore')}
+                                            className={sortField === 'matchScore' ? `sorted-${sortDirection}` : ''}
+                                        >
+                                            Match Score
+                                        </th>
+                                        <th onClick={() => handleSort('platform')} className={sortField === 'platform' ? `sorted-${sortDirection}` : ''}
+                                        >
+                                            Platform
+                                        </th>
                                         <th>Action</th>
                                         <th></th>
                                     </tr>
@@ -806,29 +856,26 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                             )}
                         </div>
                     )}
-                    
+
                     {!isLoading && jobs.length === 0 && !error && (
                         <div className="no-results-message">
-                            <svg className="no-results-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg className="no-results-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                <line x1="11" y1="8" x2="11" y2="14"></line>
-                                <line x1="8" y1="11" x2="14" y2="11"></line>
                             </svg>
-                            <h3>No jobs found for your search</h3>
-                            <p>We couldn't find any jobs matching "{title}" in {location}.</p>
-                            
+                            <h3>No jobs found</h3>
+                            <p>We couldn't find any jobs matching "{title}" in {location}</p>
+
                             <ul className="suggestions">
-                                <li>Check if your search terms are spelled correctly</li>
-                                <li>Try using more general keywords (e.g. "developer" instead of "react developer")</li>
-                                <li>Try another location or remove the location filter</li>
-                                <li>Consider different job titles that might use different terminology</li>
+                                <li>Check the spelling of your search terms</li>
+                                <li>Try using more general keywords</li>
+                                <li>Try searching without location</li>
+                                <li>Consider alternative job titles</li>
                             </ul>
-                            
-                            <button 
+
+                            <button
                                 className="search-again-button"
                                 onClick={() => {
-                                    // Focus the search bar
                                     const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
                                     if (searchInput) {
                                         searchInput.focus();

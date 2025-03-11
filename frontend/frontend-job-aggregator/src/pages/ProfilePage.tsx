@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/ProfilePage.css';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
+import { useAuthFetch } from '../hooks/useAuthFetch';
 
 interface UserProfile {
   firstName: string;
@@ -22,6 +23,7 @@ const ProfilePage: React.FC = (): JSX.Element => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { authFetch } = useAuthFetch();
 
   const handleEditPersonalInfo = () => {
     navigate('/edit-profile/personal-info', { state: { profile } });
@@ -42,12 +44,7 @@ const ProfilePage: React.FC = (): JSX.Element => {
   useEffect(() => {
     const fetchProfile = async (): Promise<void> => {
       try {
-        const token = Cookies.get('authToken');
-        if (!token) throw new Error('No token found');
-
-        const profileResponse = await fetch('http://localhost:8081/api/user/profile', {
-          headers: { 'Authorization': token }
-        });
+        const profileResponse = await authFetch('http://localhost:8081/api/user/profile');
 
         if (!profileResponse.ok) {
           throw new Error('Failed to fetch profile');
@@ -56,21 +53,36 @@ const ProfilePage: React.FC = (): JSX.Element => {
         const data: UserProfile = await profileResponse.json();
         setProfile(data);
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'An error occurred');
+        if (!(error instanceof Error && 
+            (error.message === 'Authentication required' || 
+             error.message === 'Authentication failed'))) {
+          setError(error instanceof Error ? error.message : 'An error occurred');
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchProfile();
-  }, []);
+  }, [authFetch]);
 
   if (isLoading) {
     return <div className="loading-container">Loading...</div>;
   }
 
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <div className="error-message">
+        <div className="error-title">Unable to load profile</div>
+        <p>{error}</p>
+        <button 
+          className="retry-button" 
+          onClick={() => window.location.reload()}
+        >
+          Try Again
+        </button>
+      </div>
+    );
   }
 
   if (!profile) {
@@ -125,4 +137,4 @@ const ProfilePage: React.FC = (): JSX.Element => {
   );
 }
 
-export default ProfilePage
+export default ProfilePage;

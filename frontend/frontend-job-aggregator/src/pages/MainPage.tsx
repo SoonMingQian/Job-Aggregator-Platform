@@ -5,7 +5,7 @@ import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
 import DOMPurify from 'dompurify';
 import Cookies from 'js-cookie';
-
+import { useAuthFetch } from '../hooks/useAuthFetch';
 interface Job {
     jobId: string;
     title: string;
@@ -51,7 +51,7 @@ interface Navigator {
 const MainPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-
+    const { authFetch } = useAuthFetch();
     const [error, setError] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
     const jobsPerPage = 20;
@@ -61,75 +61,97 @@ const MainPage: React.FC = () => {
     const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
     const [showSearchHistory, setShowSearchHistory] = useState(false)
     const searchContainerRef = useRef<HTMLDivElement>(null)
+    const initializeRef = useRef(false);
+    const [sortField, setSortField] = useState<keyof Job | null>(null);
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+    const handleSort = (field: keyof Job) => {
+        // If clicking the same field, toggle direction
+        if (field === sortField) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            // Default to descending for match scores, ascending for everything else
+            setSortField(field);
+            setSortDirection(field === 'matchScore' ? 'desc' : 'asc');
+        }
+    };
+    
     useEffect(() => {
-        const initialize = async () => {
-            // Load search history first and wait for it to complete
-            const historyString = Cookies.get('searchHistory');
-            console.log("Retrieved search history from cookies:", historyString);
-            
-            let recentSearch = null;
-            if (historyString) {
+        // Only run initialization once
+        if (!initializeRef.current) {
+            const initialize = async () => {
+                // Load search history first and wait for it to complete
+                const historyString = Cookies.get('searchHistory');
+                console.log("Retrieved search history from cookies:", historyString);
+
+                let recentSearch = null;
+                if (!historyString) {
+                    setSearchHistory([]);
+                } else {
+                    try {
+                        const history = JSON.parse(historyString);
+                        console.log("Parsed history:", history);
+
+                        if (Array.isArray(history) && history.length > 0) {
+                            // Sort by timestamp (newest first) to ensure we get the most recent
+                            const sortedHistory = [...history].sort((a, b) =>
+                                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                            );
+
+
+                            // Add check to prevent unnecessary updates
+                            if (JSON.stringify(sortedHistory) !== JSON.stringify(searchHistory)) {
+                                setSearchHistory(sortedHistory);
+                            }
+
+                            // But we can use the local variable right away
+                            recentSearch = sortedHistory[0];
+                        }
+                    } catch (e) {
+                        console.error('Error parsing search history from cookie:', e);
+                    }
+                }
+                // Now initialize jobs with the search history data we have
+                setIsLoading(true);
                 try {
-                    const history = JSON.parse(historyString);
-                    console.log("Parsed history:", history);
-                    
-                    if (Array.isArray(history) && history.length > 0) {
-                        // Sort by timestamp (newest first) to ensure we get the most recent
-                        const sortedHistory = [...history].sort((a, b) => 
-                            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-                        );
-                        
-                        // Set the state (won't be immediately available)
-                        setSearchHistory(sortedHistory);
-                        
-                        // But we can use the local variable right away
-                        recentSearch = sortedHistory[0];
+                    const token = Cookies.get('authToken');
+                    if (!token) {
+                        navigate('/login');
+                        return;
                     }
-                } catch (e) {
-                    console.error('Error parsing search history from cookie:', e);
-                }
-            }
-            
-            // Now initialize jobs with the search history data we have
-            setIsLoading(true);
-            try {
-                const token = Cookies.get('authToken');
-                if (!token) {
-                    navigate('/login');
-                    return;
-                }
 
-                // Use the search history we just loaded
-                const searchTitle = recentSearch?.title || "";
-                const searchLocation = recentSearch?.location || "";
+                    // Use the search history we just loaded
+                    const searchTitle = recentSearch?.title || "";
+                    const searchLocation = recentSearch?.location || "";
 
-                console.log(`Using recent search: title=${searchTitle}, location=${searchLocation}`);
+                    console.log(`Using recent search: title=${searchTitle}, location=${searchLocation}`);
 
-                // Build the URL with query parameters
-                const url = `http://localhost:8080/api/jobs/relevant?title=${encodeURIComponent(searchTitle)}&location=${encodeURIComponent(searchLocation)}`;
+                    // Build the URL with query parameters
+                    const url = `http://localhost:8080/api/jobs/relevant?title=${encodeURIComponent(searchTitle)}&location=${encodeURIComponent(searchLocation)}`;
 
-                const response = await fetch(url, {
-                    headers: {
-                        'Authorization': token
+                    const response = await authFetch(url);
+
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch jobs');
                     }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to fetch jobs');
+
+                    const data = await response.json();
+                    setJobs(data);
+                } catch (error) {
+                    console.error('Error initializing jobs:', error);
+                    if (!(error instanceof Error &&
+                        (error.message === 'Authentication required' ||
+                            error.message === 'Authentication failed'))) {
+                        setError(error instanceof Error ? error.message : 'Failed to load jobs');
+                    }
+                } finally {
+                    setIsLoading(false);
                 }
+            };
 
-                const data = await response.json();
-                setJobs(data);
-            } catch (error) {
-                console.error('Error initializing jobs:', error);
-                setError(error instanceof Error ? error.message : 'Failed to load jobs');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        initialize();
+            initialize();
+            initializeRef.current = true; // Mark as initialized
+        }
 
         const handleClickOutside = (event: MouseEvent) => {
             if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -141,6 +163,7 @@ const MainPage: React.FC = () => {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         }
+
     }, [navigate]);
 
     const saveSearchHistory = (title: string, location: string) => {
@@ -236,18 +259,32 @@ const MainPage: React.FC = () => {
         Cookies.remove('searchHistory', { path: '/' });
     };
 
-    // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    //     const { name, value } = e.target;
-    //     setFormData(prev => ({
-    //         ...prev,
-    //         [name]: value
-    //     }));
-    // };
+    // Sort jobs based on current sort settings
+    const sortedJobs = React.useMemo(() => {
+        if (!sortField) return jobs;
+        
+        return [...jobs].sort((a, b) => {
+            // Handle matchScore specially since it might be undefined
+            if (sortField === 'matchScore') {
+                const scoreA = a[sortField] || 0;
+                const scoreB = b[sortField] || 0;
+                return sortDirection === 'asc' ? scoreA - scoreB : scoreB - scoreA;
+            }
+            
+            // Handle string comparisons
+            const valueA = String(a[sortField] || '').toLowerCase();
+            const valueB = String(b[sortField] || '').toLowerCase();
+            
+            if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+            if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [jobs, sortField, sortDirection]);
 
-    // Get current jobs
+    // Get current jobs from the sorted list
     const indexOfLastJob = currentPage * jobsPerPage;
     const indexOfFirstJob = indexOfLastJob - jobsPerPage;
-    const currentJobs = jobs.slice(indexOfFirstJob, indexOfLastJob);
+    const currentJobs = sortedJobs.slice(indexOfFirstJob, indexOfLastJob);
 
     const toggleJobDescription = (jobId: string) => {
         setExpandedJob(expandedJob === jobId ? null : jobId);
@@ -304,21 +341,41 @@ const MainPage: React.FC = () => {
                     </div>
                 )}
             </div>
-            
+
             <div className="recommended-section">
                 <div className="section-header">
                     <h2>Recommended Jobs For You</h2>
                 </div>
             </div>
-            
+
             <div className="jobs-section">
                 <table className='jobs-table'>
                     <thead>
                         <tr>
-                            <th>Title</th>
-                            <th>Company</th>
-                            <th>Location</th>
-                            <th>Platform</th>
+                            <th 
+                                onClick={() => handleSort('title')}
+                                className={sortField === 'title' ? `sorted-${sortDirection}` : ''}
+                            >
+                                Title
+                            </th>
+                            <th 
+                                onClick={() => handleSort('company')}
+                                className={sortField === 'company' ? `sorted-${sortDirection}` : ''}
+                            >
+                                Company
+                            </th>
+                            <th 
+                                onClick={() => handleSort('location')}
+                                className={sortField === 'location' ? `sorted-${sortDirection}` : ''}
+                            >
+                                Location
+                            </th>
+                            <th 
+                                onClick={() => handleSort('platform')}
+                                className={sortField === 'platform' ? `sorted-${sortDirection}` : ''}
+                            >
+                                Platform
+                            </th>
                             <th>Action</th>
                             <th></th>
                         </tr>
