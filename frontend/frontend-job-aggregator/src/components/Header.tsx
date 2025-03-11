@@ -27,7 +27,8 @@ const Header: React.FC = (): JSX.Element => {
     }, []);
 
     const handleLogout = (): void => {
-        Cookies.remove("authToken", { path: '/login' });
+        // The path should be '/', not '/login'
+        Cookies.remove("authToken", { path: '/' });
         setIsAuthenticated(false);
         navigate("/login");
         // Dispatch auth change event
