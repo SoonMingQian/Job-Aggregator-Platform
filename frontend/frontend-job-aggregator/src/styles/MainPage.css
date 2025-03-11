@@ -2,8 +2,10 @@
     min-height: 100vh;
     background-color: white;
     position: relative;
-    z-index: 1; /* Create a new stacking context with a low z-index */
-    margin-top: 60px; /* Add space for the header, adjust based on your header height */
+    z-index: 1;
+    /* Create a new stacking context with a low z-index */
+    margin-top: 60px;
+    /* Add space for the header, adjust based on your header height */
 }
 
 .jobs-section {
@@ -18,6 +20,33 @@
     background: white;
     border: 1px solid #eee;
     box-shadow: none;
+}
+
+/* Add these styles for sortable table headers */
+.jobs-table th {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 18px;
+    /* Make space for the sort indicator */
+}
+
+.jobs-table th:hover {
+    background-color: #f5f5f5;
+}
+
+.jobs-table th:after {
+    content: "";
+    margin-left: 6px;
+    display: inline-block;
+}
+
+.jobs-table th.sorted-asc:after {
+    content: "↑";
+}
+
+.jobs-table th.sorted-desc:after {
+    content: "↓";
 }
 
 .jobs-table th {
@@ -237,17 +266,22 @@
 .search-container {
     position: relative;
     width: 100%;
-    max-width: 1200px; /* Match your form max-width */
-    margin: 0 auto 30px; /* Add margin at the bottom */
-    z-index: 10; /* Lower than header but higher than other content */
+    max-width: 1200px;
+    /* Match your form max-width */
+    margin: 0 auto 30px;
+    /* Add margin at the bottom */
+    z-index: 10;
+    /* Lower than header but higher than other content */
 }
 
 .search-history {
     position: absolute;
-    top: calc(100% - 10px); /* Move up slightly to overlap */
+    top: calc(100% - 10px);
+    /* Move up slightly to overlap */
     left: 0;
     right: 0;
-    z-index: 99; /* Lower than search container */
+    z-index: 99;
+    /* Lower than search container */
     background-color: white;
     border-radius: 0 0 12px 12px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
@@ -408,181 +442,171 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 200px;
-    margin: 40px auto;
     max-width: 1000px;
-    text-align: center;
-    padding: 30px;
+    margin: 30px auto;
+    padding: 0 20px;
 }
 
 .error-message {
-    background-color: #fff3f3;
-    border: 1px solid #ffcdd2;
-    border-left: 4px solid #f44336;
-    border-radius: 4px;
-    color: #d32f2f;
-    font-size: 15px;
-    padding: 16px 20px;
-    line-height: 1.5;
     width: 100%;
-    max-width: 800px;
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 16px 20px;
+    color: #333;
+    font-size: 14px;
+    line-height: 1.5;
     text-align: left;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    margin-bottom: 15px;
 }
 
 .partial-error {
-    background-color: #fff8e1;
-    border: 1px solid #ffe082;
-    border-left: 4px solid #ffa000;
-    color: #ff8f00;
+    border-left: 3px solid #f0ad4e;
+}
+
+.error-message:not(.partial-error) {
+    border-left: 3px solid #dc3545;
 }
 
 .error-title {
-    font-weight: 600;
-    font-size: 16px;
-    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: #555;
     display: block;
 }
 
 .retry-button {
-    margin-top: 20px;
-    padding: 10px 24px;
-    background-color: #f5f5f5;
+    padding: 8px 16px;
+    background-color: white;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
-    font-weight: 500;
     color: #333;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .retry-button:hover {
-    background-color: #e0e0e0;
-    border-color: #bdbdbd;
+    background-color: #f5f5f5;
 }
 
 /* Add this rule to ensure header is above everything */
 .header {
     position: sticky;
     top: 0;
-    z-index: 9999 !important; /* Force highest z-index */
+    z-index: 9999 !important;
+    /* Force highest z-index */
     background: white;
 }
 
 .pending-requests-banner {
     display: flex;
     align-items: center;
-    background-color: #fff8e1;
-    border-left: 4px solid #ffc107;
-    padding: 10px 15px;
-    margin-bottom: 20px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-left: 3px solid #2196f3;
+    padding: 14px 16px;
+    margin: 0 auto 20px;
+    max-width: 1000px;
     border-radius: 4px;
 }
 
 .mini-loader {
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #ffc107;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #2196f3;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-right: 15px;
+    margin-right: 12px;
 }
 
 .pending-text {
     font-size: 14px;
-    color: #5d4037;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    color: #333;
 }
 
 .pending-subtext {
     font-size: 12px;
-    color: #666;
-    margin-top: 5px;
+    color: #777;
+    margin-top: 3px;
     display: block;
 }
 
-/* Updated No Results Message Styling */
+/* Updated No Results Message - Minimalist Design */
 .no-results-message {
     text-align: center;
-    background-color: #f9f9f9;
-    border-radius: 8px;
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
     padding: 40px 30px;
     margin: 40px auto;
     max-width: 600px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    border: 1px solid #eee;
 }
 
 .no-results-message h3 {
-    font-size: 24px;
+    font-size: 18px;
     color: #333;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     font-weight: 500;
 }
 
 .no-results-message p {
-    font-size: 16px;
-    color: #666;
-    margin-bottom: 24px;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 20px;
     line-height: 1.5;
 }
 
 .no-results-message .suggestions {
-    margin: 30px 0 20px;
+    margin: 24px 0 28px;
     padding: 0;
     list-style: none;
     text-align: left;
     max-width: 450px;
     margin-left: auto;
     margin-right: auto;
+    color: #666;
 }
 
 .no-results-message .suggestions li {
-    margin-bottom: 10px;
-    padding-left: 24px;
+    margin-bottom: 8px;
+    padding-left: 20px;
     position: relative;
-    font-size: 15px;
-    color: #555;
+    font-size: 14px;
 }
 
 .no-results-message .suggestions li:before {
     content: "•";
     position: absolute;
-    left: 8px;
-    color: #2557a7;
-    font-weight: bold;
+    left: 6px;
+    color: #666;
 }
 
 .no-results-message .search-again-button {
-    background-color: #2557a7;
-    color: white;
-    border: none;
+    background-color: white;
+    color: #333;
+    border: 1px solid #ddd;
     border-radius: 4px;
-    padding: 12px 24px;
-    font-size: 15px;
-    font-weight: 500;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 400;
     cursor: pointer;
     transition: background-color 0.2s;
-    margin-top: 10px;
 }
 
 .no-results-message .search-again-button:hover {
-    background-color: #1d4b8f;
+    background-color: #f5f5f5;
 }
 
 .no-results-icon {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 25px;
-    opacity: 0.8;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 20px;
+    opacity: 0.6;
+    stroke: #666;
 }
 
 .recommended-section {
@@ -591,7 +615,8 @@
     max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
-    text-align: left;  /* Left align text */
+    text-align: left;
+    /* Left align text */
 }
 
 .section-header {
@@ -619,4 +644,3 @@
         font-size: 1.3rem;
     }
 }
-
