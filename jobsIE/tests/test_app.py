@@ -24,9 +24,9 @@ redis_patch.start()
 logger_patch.start()
 
 # Now import the app (AFTER patching)
-from app import IrishJobsScraper, app
+from app import JobsIEScraper, app
 
-class TestIrishJobsScraper(unittest.TestCase):
+class TestJobsIEJobsScraper(unittest.TestCase):
 
     def setUp(self):
         # Create fresh mocks for each test
@@ -44,7 +44,7 @@ class TestIrishJobsScraper(unittest.TestCase):
         self.logger_mock = self.logger_patcher.start()
         
         # Now we can safely create a scraper instance
-        self.scraper = IrishJobsScraper()
+        self.scraper = JobsIEScraper()
         # Replace the scraper's Redis client with our mock
         self.scraper.redis_client = self.mock_redis_client
         # Replace Kafka producers with mocks
@@ -57,19 +57,16 @@ class TestIrishJobsScraper(unittest.TestCase):
         self.kafka_patcher.stop()
         self.redis_patcher.stop()
         self.logger_patcher.stop()
-    
+
     def test_init(self):
         self.assertEqual(self.scraper.MAX_JOBS, 100)
-        self.assertEqual(self.scraper.base_url, "https://www.irishjobs.ie")
+        self.assertEqual(self.scraper.base_url, "https://www.jobs.ie")
         self.assertIsInstance(self.scraper.processed_urls, set)
         self.assertEqual(len(self.scraper.processed_urls), 0)
     
     def test_generate_job_id(self):
         job_data = {
-            'company': 'Test Company',
-            'title': 'Software Engineer',
-            'location': 'Dublin',
-            'posted_date': '2023-01-01'
+            'jobId' : '101'
         }
 
         id1 = self.scraper.generate_job_id(job_data)
@@ -77,33 +74,27 @@ class TestIrishJobsScraper(unittest.TestCase):
 
         self.assertTrue(id1.startswith('job:'))
         self.assertEqual(id1, id2, "Job IDs should be deterministic")
+        self.assertEqual(id1, 'job:101')
 
-        # Verify UUID is valid
-        uuid_part = id1[4:]  # Remove 'job:' prefix
-        try:
-            uuid_obj = uuid.UUID(uuid_part)
-            self.assertEqual(str(uuid_obj), uuid_part)
-        except ValueError:
-            self.fail("Job ID does not contain a valid UUID")
-
-        # Test with different data
-        different_data = job_data.copy()
-        different_data['company'] = 'Another Company'
+        different_data = {
+        'jobId': '102'
+        }
         different_id = self.scraper.generate_job_id(different_data)
         self.assertNotEqual(id1, different_id)
-
+        self.assertEqual(different_id, 'job:102')
+    
     def test_generate_cache_key(self):
         # Test with regular input
         result = self.scraper.generate_cache_key("Software Engineer", "Dublin")
-        self.assertEqual(result, "search:software engineer:dublin:irishJobs")
+        self.assertEqual(result, "search:software engineer:dublin:jobsIE")
         
         # Test with uppercase input
         result = self.scraper.generate_cache_key("SOFTWARE ENGINEER", "DUBLIN")
-        self.assertEqual(result, "search:software engineer:dublin:irishJobs")
+        self.assertEqual(result, "search:software engineer:dublin:jobsIE")
         
         # Test with mixed case and spaces
         result = self.scraper.generate_cache_key("  Data   Scientist  ", " Remote ")
-        self.assertEqual(result, "search:  data   scientist  : remote :irishJobs")
+        self.assertEqual(result, "search:  data   scientist  : remote :jobsIE")
 
     def test_get_cached_results_no_user_id(self):
         # Configure mock to return job keys
@@ -121,9 +112,9 @@ class TestIrishJobsScraper(unittest.TestCase):
         self.assertEqual(results[0]["jobId"], "job:123")
         self.assertEqual(results[1]["company"], "Software Inc")
 
-        self.mock_redis_client.smembers.assert_called_once_with("search:developer:dublin:irishJobs")
+        self.mock_redis_client.smembers.assert_called_once_with("search:developer:dublin:jobsIE")
         self.assertEqual(self.mock_redis_client.hgetall.call_count, 2)
-    
+
     def test_get_cached_results_with_user_id_and_match(self):
         # Configure mock to return job keys
         self.mock_redis_client.smembers.return_value = ["job:123"]
@@ -182,7 +173,7 @@ class TestIrishJobsScraper(unittest.TestCase):
             'company': 'Test Company',
             'location': 'Dublin',
             'jobDescription': 'This is a job description',
-            'applyLink': 'https://irishjobs.ie'
+            'applyLink': 'https://jobs.ie'
         }
 
         result = self.scraper.store_job_listing(job_data, "Software Engineer", "Dublin")
@@ -191,7 +182,7 @@ class TestIrishJobsScraper(unittest.TestCase):
         # Verify Redis calls
         self.mock_redis_client.hmset.assert_called_once_with('job:xyz', job_data)
         self.mock_redis_client.sadd.assert_called_once_with(
-            'search:software engineer:dublin:irishJobs', 
+            'search:software engineer:dublin:jobsIE', 
             'job:xyz'
         )
         self.assertEqual(self.mock_redis_client.expire.call_count, 2) 
@@ -216,7 +207,7 @@ class TestIrishJobsScraper(unittest.TestCase):
         
         # Verify logger called with error
         self.logger_mock.error.assert_called()
-
+    
 class TestFlaskApp(unittest.TestCase):
     def setUp(self):
         app.config['TESTING'] = True
@@ -244,8 +235,8 @@ class TestFlaskApp(unittest.TestCase):
             # Remove the scraper attribute if it didn't exist before
             if hasattr(app, 'scraper'):
                 delattr(app, 'scraper')
-
-    @patch('app.IrishJobsScraper.get_cached_results')
+    
+    @patch('app.JobsIEScraper.get_cached_results')
     def test_irishjobs_endpoint_cached_results(self, mock_get_cached):
         # Prepare mock cached results
         mock_cached_jobs = [
@@ -255,7 +246,7 @@ class TestFlaskApp(unittest.TestCase):
         mock_get_cached.return_value = mock_cached_jobs
         
         # Call the endpoint
-        response = self.client.get('/irishjobs?title=Developer&job_location=Dublin&userId=user123')
+        response = self.client.get('/jobsie?title=Developer&job_location=Dublin&userId=user123')
         
         # Parse response
         data = json.loads(response.data)
@@ -265,10 +256,10 @@ class TestFlaskApp(unittest.TestCase):
         self.assertEqual(data['status'], 'success')
         self.assertEqual(data['source'], 'cache')
         self.assertEqual(len(data['jobs']), 2)
-
+    
     def test_irishjobs_endpoint_missing_params(self):
         # Call endpoint with missing parameters
-        response = self.client.get('/irishjobs?title=Developer')
+        response = self.client.get('/jobsie?title=Developer')
         
         # Parse response
         data = json.loads(response.data)
