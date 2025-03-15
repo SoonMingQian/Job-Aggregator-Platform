@@ -3,7 +3,6 @@ import json
 from random import uniform
 import asyncio
 from redis import Redis
-import uuid
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 from kafka.errors import NoBrokersAvailable
