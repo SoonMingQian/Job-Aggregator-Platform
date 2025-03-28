@@ -1,6 +1,7 @@
 package com.example.user.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,6 +20,9 @@ public class UserProfileService {
 
 	@Autowired
 	private UserProfileRepository userProfileRepository;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
 	@Autowired
 	UserRepository userRepository;
@@ -94,10 +98,24 @@ public class UserProfileService {
 
 		UserProfile profile = userProfileRepository.findByUser(user)
 				.orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
-		
+
 		profile.setCvData(cv.getBytes());
 		profile.setCvName(cv.getOriginalFilename());
-		
+
 		return userProfileRepository.save(profile);
+	}
+
+	public void changeUserPassword(User user, String newPassword) {
+		System.out.println("Encoding password with BCryptPasswordEncoder");
+		String encodedPassword = passwordEncoder.encode(newPassword);
+		System.out.println("Password encoded, length: " + encodedPassword.length());
+		user.setPassword(encodedPassword);
+		userRepository.save(user);
+		System.out.println("User saved with new password");
+
+	}
+
+	public User findUserByEmail(String userEmail) {
+		return userRepository.findByEmail(userEmail);
 	}
 }

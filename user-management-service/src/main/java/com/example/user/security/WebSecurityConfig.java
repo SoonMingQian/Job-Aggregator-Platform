@@ -63,8 +63,12 @@ public class WebSecurityConfig {
 		http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(csrf -> csrf.disable())
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**").permitAll()
-						.requestMatchers("/api/user/**").permitAll().requestMatchers("/api/jobs/**").permitAll()
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers("/api/user/**").permitAll()
+						.requestMatchers("/api/jobs/**").permitAll()
+						.requestMatchers("/api/reset-password", "/api/resend-reset-token").permitAll()
+            			.requestMatchers("/api/user/savePassword").permitAll()
 						.requestMatchers("/api/**").permitAll()
 						.requestMatchers("/**").permitAll().anyRequest().authenticated());
 

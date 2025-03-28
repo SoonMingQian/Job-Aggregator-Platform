@@ -33,6 +33,15 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		try {
+			 // Get the request path
+			String path = request.getRequestURI();
+			
+			// Skip token validation for public endpoints
+			if (isPublicEndpoint(path)) {
+				filterChain.doFilter(request, response);
+				return;
+			}
+			
 			// Parse JWT token from the request
 			String jwt = parseJwt(request);
 			if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
@@ -50,7 +59,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 				SecurityContextHolder.getContext().setAuthentication(authentication);
 			}
 		} catch (Exception e) {
-			logger.error("Cannot set user authentication: {}", e);
+			logger.error("Cannot set user authentication: {}", e.getMessage());
 		}
 
 		filterChain.doFilter(request, response);
@@ -65,5 +74,15 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 			return headerAuth.substring(7);
 		}
 		return null;
+	}
+	
+	private boolean isPublicEndpoint(String path) {
+		// Check if this is a path that should skip JWT validation
+		return path.startsWith("/api/auth/") ||
+			   path.equals("/api/reset-password") ||
+			   path.equals("/api/resend-reset-token") ||
+			   path.equals("/api/check-email") ||
+			   path.startsWith("/api/user/savePassword") ||
+			   path.contains("/test/");
 	}
 }
