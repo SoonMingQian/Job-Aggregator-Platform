@@ -4,7 +4,8 @@
     box-sizing: border-box;
 }
 
-body, html {
+body,
+html {
     margin: 0;
     padding: 0;
     width: 100%;
@@ -229,7 +230,7 @@ button[type="submit"]:disabled {
         min-width: 100%;
         max-width: 100%;
     }
-    
+
     .image-container {
         min-height: 300px;
         height: auto;
@@ -246,4 +247,110 @@ button[type="submit"]:disabled {
     .form-container {
         padding: 30px;
     }
+}
+
+.forgot-password {
+    text-align: center;
+    margin-top: 8px;
+}
+
+.forgot-password a {
+    color: #4a6cf7;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
+}
+
+/* Success message */
+.success-message {
+    background-color: #f8f9fa;
+    border-left: 4px solid #4a6cf7;
+    color: #333;
+    padding: 20px;
+    border-radius: 4px;
+    margin: 30px auto;
+    text-align: left;
+    max-width: 400px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.success-message p {
+    margin-bottom: 20px;
+    margin-left: 0 !important;
+    color: #333 !important;
+}
+
+.success-message .submit-button {
+    background: white;
+    color: #4a6cf7;
+    border: 1px solid #4a6cf7;
+    transition: all 0.2s;
+    max-width: 100%;
+}
+
+.success-message .submit-button:hover {
+    background: #4a6cf7;
+    color: white;
+}
+
+.success-icon {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    color: #4a6cf7;
+}
+
+.success-icon svg {
+    margin-right: 10px;
+}
+
+/* Back link */
+.back-link {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.back-link a {
+    color: #4a6cf7;
+    text-decoration: none;
+}
+
+.back-link a:hover {
+    text-decoration: underline;
+}
+
+/* Reset info section */
+.reset-info {
+    color: white;
+    text-align: center;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.reset-info h3 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.reset-info p {
+    font-size: 16px;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }

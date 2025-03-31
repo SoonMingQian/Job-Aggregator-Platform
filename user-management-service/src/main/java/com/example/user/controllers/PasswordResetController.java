@@ -118,6 +118,6 @@ public class PasswordResetController {
 	}
 
 	private String getAppUrl(HttpServletRequest request) {
-		return "http://localhost:8081";
+		return "http://localhost:5173";
 	}
 }

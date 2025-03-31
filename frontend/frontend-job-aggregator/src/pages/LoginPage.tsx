@@ -188,6 +188,9 @@ const LoginPage: React.FC = () => {
                         {formErrors.password && (
                             <span className="error-text">{formErrors.password}</span>
                         )}
+                        <div className='forgot-password'>
+                            <a href='/forgot-password'>Forgot password?</a>
+                        </div>
                     </div>
                     {error && (
                         <div className="error-message">
