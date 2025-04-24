@@ -296,9 +296,7 @@ const SignupPage: React.FC = () => {
                 </form>
                 <p>or signup with</p>
                 <div className="social-login">
-                    <button className="social-btn facebook">Facebook</button>
-                    <button className="social-btn google" onClick={handleGoogleSignup}>Google</button>
-                    <button className="social-btn apple">Apple</button>
+                    <button className="social-btn google" onClick={handleGoogleSignup}>Sign up with Google</button>
                 </div>
             </div>
             <div className="image-container">

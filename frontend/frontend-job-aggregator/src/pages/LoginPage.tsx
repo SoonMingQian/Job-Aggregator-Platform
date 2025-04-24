@@ -205,16 +205,14 @@ const LoginPage: React.FC = () => {
                         {isLoading ? 'Loading...' : 'Login'}
                     </button>
                 </form>
-                <p>or login in with</p>
+                <p>or login with</p>
                 <div className="social-login">
-                    <button className="social-btn facebook">Facebook</button>
                     <button
                         className="social-btn google"
                         onClick={handleGoogleLogin}
                     >
-                        Google
+                        Sign in with Google
                     </button>
-                    <button className="social-btn apple">Apple</button>
                 </div>
             </div>
             <div className="image-container">

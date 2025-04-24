@@ -134,16 +134,11 @@ button[type="submit"]:disabled {
     background: #f5f5f5;
 }
 
-.social-btn.facebook {
-    color: #1877f2;
-}
-
 .social-btn.google {
+    width: 100%;
+    max-width: 400px;
     color: #db4437;
-}
-
-social-btn.apple {
-    color: #000;
+    font-weight: 500;
 }
 
 .image-container {
