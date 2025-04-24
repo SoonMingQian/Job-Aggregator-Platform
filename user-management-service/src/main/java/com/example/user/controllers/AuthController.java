@@ -191,7 +191,7 @@ public class AuthController {
 			String registrationStatus = isNewUser ? "new" : "existing";
 
 			// Redirect to frontend with token
-	        String redirectUrl = String.format("http://localhost:5173/oauth/callback?token=%s&email=%s",
+	        String redirectUrl = String.format("https://soonmingqian.github.io/Job-Aggregator-Platform/oauth/callback?token=%s&email=%s",
 	                URLEncoder.encode(jwt, StandardCharsets.UTF_8),
 	                URLEncoder.encode(userDetails.getEmail(), StandardCharsets.UTF_8),
 					registrationStatus,
@@ -201,7 +201,7 @@ public class AuthController {
 
 		} catch (Exception e) {
 			logger.error("Error in Google callback: ", e);
-	        response.sendRedirect("http://localhost:5173/?error=" + 
+	        response.sendRedirect("https://soonmingqian.github.io/Job-Aggregator-Platform/?error=" + 
 	            URLEncoder.encode("Authentication failed", StandardCharsets.UTF_8));
 		}
 	}
