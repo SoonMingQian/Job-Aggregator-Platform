@@ -1,0 +1,4 @@
+/.metadata/
+.env
+
+node_modules/
