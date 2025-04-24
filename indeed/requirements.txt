@@ -1,6 +1,0 @@
-Flask
-redis
-kafka-python
-playwright
-asyncio
-flask-cors
