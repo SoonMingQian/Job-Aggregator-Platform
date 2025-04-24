@@ -211,23 +211,6 @@ services:
       - app-network
     # restart: on-failure:5 
 
-  indeed-scraper:
-    build: ./indeed
-    ports:
-      - "3001:3001"
-    depends_on:
-      redis:
-        condition: service_started
-      kafka1:
-        condition: service_healthy
-      kafka2:
-        condition: service_healthy
-      kafka3:
-        condition: service_healthy
-    networks:
-      - app-network
-    # restart: on-failure:5 
-
   jobsie-scraper:
     build: ./jobsIE
     ports:
