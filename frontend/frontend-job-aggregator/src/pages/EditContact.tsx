@@ -15,7 +15,7 @@ const EditContact: React.FC = () => {
         e.preventDefault();
         try {
             const token = Cookies.get('authToken');
-            const response = await fetch('http://localhost:8081/api/user/profile/contact', {
+            const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/profile/contact`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': token || '',

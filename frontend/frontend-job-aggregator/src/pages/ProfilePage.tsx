@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/ProfilePage.css';
 import { useNavigate } from 'react-router-dom';
-import Cookies from 'js-cookie';
 import { useAuthFetch } from '../hooks/useAuthFetch';
 
 interface UserProfile {
@@ -44,7 +43,7 @@ const ProfilePage: React.FC = (): JSX.Element => {
   useEffect(() => {
     const fetchProfile = async (): Promise<void> => {
       try {
-        const profileResponse = await authFetch('http://localhost:8081/api/user/profile');
+        const profileResponse = await authFetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/profile`);
 
         if (!profileResponse.ok) {
           throw new Error('Failed to fetch profile');

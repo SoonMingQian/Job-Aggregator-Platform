@@ -129,7 +129,7 @@ const CompleteProfile: React.FC = () => {
 
             console.log('Form data being sent:', Object.fromEntries(formDataToSend));
 
-            const response = await fetch('http://localhost:8081/api/user/complete-profile', {
+            const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/complete-profile`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${actualToken}`
@@ -156,7 +156,7 @@ const CompleteProfile: React.FC = () => {
             }
             console.log('userId:', userId);
             // Send to text extraction service
-            const analysisResponse = await fetch('http://127.0.0.1:5000/extract-text', {
+            const analysisResponse = await fetch(`${import.meta.env.VITE_API_TEXT_PROCESSING}/extract-text`, {
                 method: 'POST',
                 body: formDataToAnalysis
             })
@@ -218,7 +218,6 @@ const CompleteProfile: React.FC = () => {
                             name="education"
                             value={formData.education}
                             onChange={handleInputChange}
-                            required
                         />
                         {formErrors.education && (
                             <span className="error-text">{formErrors.education}</span>
@@ -232,7 +231,6 @@ const CompleteProfile: React.FC = () => {
                             name="jobTitle"
                             value={formData.jobTitle}
                             onChange={handleInputChange}
-                            required
                         />
                     </div>
                     <div className="input-group">
@@ -243,7 +241,6 @@ const CompleteProfile: React.FC = () => {
                             name="company"
                             value={formData.company}
                             onChange={handleInputChange}
-                            required
                         />
                     </div>
                     <div className="input-group">

@@ -25,7 +25,7 @@ const ForgotPassword: React.FC = () => {
         setError('');
 
         try {
-            const response = await fetch(`http://localhost:8081/api/reset-password?email=${encodeURIComponent(email)}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/reset-password?email=${encodeURIComponent(email)}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

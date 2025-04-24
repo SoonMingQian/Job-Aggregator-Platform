@@ -448,17 +448,13 @@
 }
 
 .error-message {
-    width: 100%;
-    background-color: white;
-    border: 1px solid #e0e0e0;
+    background-color: #ffebee;
+    color: #d32f2f;
+    padding: 10px;
+    margin: 10px 0;
     border-radius: 4px;
-    padding: 16px 20px;
-    color: #333;
     font-size: 14px;
-    line-height: 1.5;
-    text-align: left;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    margin-bottom: 15px;
+    text-align: center;
 }
 
 .partial-error {

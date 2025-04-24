@@ -23,7 +23,7 @@ const EditPersonalInfo: React.FC = () => {
             if (!token) {
                 throw new Error('No token found');
             }
-            const response = await fetch('http://localhost:8081/api/user/profile/personal', {
+            const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/profile/personal`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': token,

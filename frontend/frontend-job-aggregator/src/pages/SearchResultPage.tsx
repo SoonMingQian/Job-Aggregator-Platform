@@ -73,7 +73,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
             console.log('Polling for match scores...');
             // Use authFetch here instead
             const matchResponse = await authFetch(
-                `http://localhost:8082/api/redis/match/${userId}`
+                `${import.meta.env.VITE_API_MATCHING_SERVICE}/api/redis/match/${userId}`
             );
 
             if (matchResponse.ok) {
@@ -138,7 +138,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
 
             console.log('Fetching user profile...');
             // Use authFetch instead
-            const profileResponse = await authFetch('http://localhost:8081/api/user/userId');
+            const profileResponse = await authFetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/userId`);
 
             const profileData = await profileResponse.json();
             console.log('User profile received:', profileData);
@@ -162,7 +162,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
             const apiEndpoints = [
                 {
                     name: 'jobsie',
-                    url: `http://127.0.0.1:3002/jobsie?${new URLSearchParams({
+                    url: `${import.meta.env.VITE_API_JOBSIE}/jobsie?${new URLSearchParams({
                         title: title,
                         job_location: location,
                         userId,
@@ -179,7 +179,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                 },
                 {
                     name: 'irishjobs',
-                    url: `http://127.0.0.1:3003/irishjobs?${new URLSearchParams({
+                    url: `${import.meta.env.VITE_API_IRISHJOBS}/irishjobs?${new URLSearchParams({
                         title: title,
                         job_location: location,
                         userId,
@@ -474,7 +474,7 @@ const SearchResultPage: React.FC = (): JSX.Element => {
                     if (isActive && fetchedJobs && fetchedJobs.length > 0) {
                         const needScores = fetchedJobs.some(job => job.matchScore === undefined);
                         if (needScores) {
-                            const profileResponse = await authFetch('http://localhost:8081/api/user/userId');
+                            const profileResponse = await authFetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/userId`);
                             const profileData = await profileResponse.json();
                             const userId = profileData.userId;
 

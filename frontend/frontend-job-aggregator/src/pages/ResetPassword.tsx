@@ -94,7 +94,7 @@ const ResetPasswordPage: React.FC = () => {
         setIsLoading(true);
         
         try {
-            const response = await fetch('http://localhost:8081/api/user/savePassword', {
+            const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/savePassword`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

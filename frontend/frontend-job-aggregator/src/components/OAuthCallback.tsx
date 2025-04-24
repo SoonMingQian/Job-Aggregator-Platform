@@ -42,7 +42,7 @@ const OAuthCallback: React.FC = () => {
                 });
 
                 // Check if profile is complete
-                const response = await fetch('http://localhost:8081/api/user/profile-status', {
+                const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/profile-status`, {
                     headers: {
                         'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
                     }

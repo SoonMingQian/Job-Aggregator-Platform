@@ -77,7 +77,7 @@ const LoginPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:8081/api/auth/login', {
+            const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -101,7 +101,7 @@ const LoginPage: React.FC = () => {
             window.dispatchEvent(new Event('authChange'));
 
             // Check if profile is complete
-            const profileResponse = await fetch('http://localhost:8081/api/user/profile-status', {
+            const profileResponse = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/profile-status`, {
                 headers: {
                     'Authorization': formattedToken
                 }

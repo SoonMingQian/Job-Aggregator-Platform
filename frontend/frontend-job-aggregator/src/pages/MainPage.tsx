@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
@@ -28,24 +28,11 @@ interface BrowserInfo {
     user_agent: string;
 }
 
-interface NavigatorUserAgentData {
-    platform: string;
-    brands: Array<{
-        brand: string;
-        version: string;
-    }>;
-    mobile: boolean;
-}
-
 interface SearchHistoryItem {
     id: string;
     title: string;
     location: string;
     timestamp: string;
-}
-
-interface Navigator {
-    userAgentData?: NavigatorUserAgentData;
 }
 
 const MainPage: React.FC = () => {
@@ -127,7 +114,7 @@ const MainPage: React.FC = () => {
                     console.log(`Using recent search: title=${searchTitle}, location=${searchLocation}`);
 
                     // Build the URL with query parameters
-                    const url = `http://localhost:8080/api/jobs/relevant?title=${encodeURIComponent(searchTitle)}&location=${encodeURIComponent(searchLocation)}`;
+                    const url = `${import.meta.env.VITE_API_JOBS_SERVICE}/api/jobs/relevant?title=${encodeURIComponent(searchTitle)}&location=${encodeURIComponent(searchLocation)}`;
 
                     const response = await authFetch(url);
 
@@ -303,6 +290,13 @@ const MainPage: React.FC = () => {
                     onSearch={handleSearch}
                     onFocus={() => setShowSearchHistory(true)}
                 />
+
+                {/* Add error message display */}
+                {error && (
+                    <div className="error-message">
+                        {error}
+                    </div>
+                )}
 
                 {showSearchHistory && searchHistory.length > 0 && (
                     <div className="search-history">

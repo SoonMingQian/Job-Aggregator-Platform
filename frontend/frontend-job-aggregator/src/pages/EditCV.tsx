@@ -23,7 +23,7 @@ const EditCV: React.FC = () => {
             const formData = new FormData();
             formData.append('cv', file);
 
-            const cvResponse = await fetch('http://localhost:8081/api/user/profile/cv', {
+            const cvResponse = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/profile/cv`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token.replace('Bearer ', '')}`
@@ -44,7 +44,7 @@ const EditCV: React.FC = () => {
             formDataAnalysis.append('userId', userId);
             formDataAnalysis.append('file', file);
 
-            const analysisResponse = await fetch('http://127.0.0.1:5000/extract-text', {
+            const analysisResponse = await fetch(`${import.meta.env.VITE_API_TEXT_PROCESSING}/extract-text`, {
                 method: 'POST',
                 body: formDataAnalysis
             });
@@ -77,9 +77,16 @@ const EditCV: React.FC = () => {
                         onChange={(e) => setFile(e.target.files?.[0] || null)}
                     />
                 </div>
+                
+                {/* Add error message display */}
+                {error && <div className="error-message">{error}</div>}
+                
+                {/* Add loading indicator */}
+                {isLoading && <div className="loading-indicator">Uploading and analyzing CV...</div>}
+                
                 <div className="button-group">
-                    <button type="submit" className="save-button" disabled={!file}>
-                        Upload CV
+                    <button type="submit" className="save-button" disabled={!file || isLoading}>
+                        {isLoading ? 'Processing...' : 'Upload CV'}
                     </button>
                     <button type="button" className="cancel-button" onClick={() => navigate('/profile')}>
                         Cancel
