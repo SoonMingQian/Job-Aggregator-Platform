@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://SoonMingQian.github.io/Job-Aggregator-Platform",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
