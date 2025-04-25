@@ -1,0 +1,41 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/frontend-job-aggregator/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/frontend-job-aggregator/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          
+      - name: Install dependencies
+        run: |
+          cd frontend/frontend-job-aggregator
+          npm ci
+          
+      - name: Build
+        run: |
+          cd frontend/frontend-job-aggregator
+          npm run build
+          
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cd frontend/frontend-job-aggregator
+          npm run deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
