@@ -1,0 +1,289 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/data
+    networks:
+      - app-network
+  
+  kafka1:
+    image: wurstmeister/kafka:latest
+    container_name: job-aggregator-platform-kafka1-1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    restart: unless-stopped
+    volumes:
+      - kafka1-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
+      KAFKA_CREATE_TOPICS: "analysis:3:2,storage:3:2,skill:3:2,matching:3:2"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_AUTO_LEADER_REBALANCE_ENABLE: 'true'
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: 'true'
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --list --bootstrap-server localhost:9092"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  kafka2:
+    image: wurstmeister/kafka:latest
+    container_name: job-aggregator-platform-kafka2-1
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+    volumes:
+      - kafka2-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9093
+      KAFKA_CREATE_TOPICS: "analysis:3:2,storage:3:2,skill:3:2,matching:3:2"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_AUTO_LEADER_REBALANCE_ENABLE: 'true'
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: 'true'
+    depends_on:
+      - zookeeper
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --list --bootstrap-server localhost:9093"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+
+  kafka3:
+    image: wurstmeister/kafka:latest
+    container_name: job-aggregator-platform-kafka3-1
+    ports:
+      - "9094:9094"
+    restart: unless-stopped
+    volumes:
+      - kafka3-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9094
+      KAFKA_CREATE_TOPICS: "analysis:3:2,storage:3:2,skill:3:2,matching:3:2"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_AUTO_LEADER_REBALANCE_ENABLE: 'true'
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: 'true'
+    depends_on:
+      - zookeeper
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --list --bootstrap-server localhost:9094"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  mysql-jobs-storage:
+    image: mysql:latest
+    environment:
+      MYSQL_DATABASE: jobs
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-jobs-storage-data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+  mysql-user-management:
+    image: mysql:latest
+    environment:
+      MYSQL_DATABASE: users
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-user-management-data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    image: qian2828/user-service:latest
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user-management:3306/users
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql-user-management:
+        condition: service_healthy
+    networks:
+      - app-network
+  
+  jobs-storage-service:
+    image: qian2828/jobs-storage-service:latest
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-jobs-storage:3306/jobs
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - mysql-jobs-storage
+      - redis
+    networks:
+      - app-network
+
+  matching-service:
+    image: qian2828/matching-service:latest
+    environment:
+      SERVER_PORT: 8082
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    ports:
+      - "8082:8082"
+    depends_on:
+      redis:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  jobsie-scraper:
+    image: qian2828/jobsie-scraper:latest
+    ports:
+      - "3002:3002"
+    depends_on:
+      redis:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks:
+      - app-network
+    dns:
+      - 8.8.8.8
+    
+  irishjobs-scraper:
+    image: qian2828/irishjobs-scraper:latest
+    ports:
+      - "3003:3003"
+    depends_on:
+      redis:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks:
+      - app-network 
+    dns:
+      - 8.8.8.8
+
+  text-processing:
+    image: qian2828/text-processing:latest
+    ports:
+      - "5000:5000"
+    depends_on:
+      redis:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  ai-skills-extraction:
+    image: qian2828/ai-skills-extraction:latest
+    depends_on:
+      redis:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  kafka1-data:  
+  kafka2-data:
+  kafka3-data:
+  zookeeper-data:
+    name: job-aggregator-platform_zookeeper-data
+  mysql-jobs-storage-data:
+  mysql-user-management-data:
