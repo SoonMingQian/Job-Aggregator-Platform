@@ -38,5 +38,7 @@ jobs:
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          folder: frontend/frontend-job-aggregator/dist
+          branch: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
