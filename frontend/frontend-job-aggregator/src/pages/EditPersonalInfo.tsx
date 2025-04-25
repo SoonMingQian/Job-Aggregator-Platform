@@ -9,19 +9,20 @@ interface FormData {
 }
 
 const EditPersonalInfo: React.FC = () => {
-    const location = useLocation();
-    const navigate = useNavigate();
+    const location = useLocation(); // Access the current location state
+    const navigate = useNavigate(); // Navigation hook to redirect users
     const [formData, setFormData] = useState<FormData>({
-        firstName: location.state?.profile?.firstName || '',
-        lastName: location.state?.profile?.lastName || ''
+        firstName: location.state?.profile?.firstName || '', // Initialize first name from location state
+        lastName: location.state?.profile?.lastName || '' // Initialize last name from location state
     });
 
+    // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = Cookies.get('authToken');
+            const token = Cookies.get('authToken'); // Retrieve authentication token from cookies
             if (!token) {
-                throw new Error('No token found');
+                throw new Error('No token found'); // Handle missing token error
             }
             const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/user/profile/personal`, {
                 method: 'PUT',
@@ -29,14 +30,14 @@ const EditPersonalInfo: React.FC = () => {
                     'Authorization': token,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData) // Send updated form data
             });
 
             if (response.ok) {
-                navigate('/profile');
+                navigate('/profile'); 
             }
         } catch (error) {
-            console.error('Error updating profile:', error);
+            console.error('Error updating profile:', error); 
         }
     };
 
@@ -65,10 +66,13 @@ const EditPersonalInfo: React.FC = () => {
                 </div>
                 <div className="form-group">
                     <label>Email</label>
+                    {/* Display email as a read-only field */}
                     <div className="readonly-field">{location.state?.profile?.email}</div>
                 </div>
                 <div className="button-group">
+                    {/* Save changes button */}
                     <button type="submit" className="save-button">Save Changes</button>
+                    {/* Cancel button to navigate back to the profile page */}
                     <button type="button" className="cancel-button" onClick={() => navigate('/profile')}>
                         Cancel
                     </button>
