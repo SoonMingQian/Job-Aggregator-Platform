@@ -9,11 +9,13 @@ const ForgotPassword: React.FC = () => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
+    // Function to validate email format
     const validateEmail = (email: string) => {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return regex.test(email);
     };
 
+    // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if(!validateEmail(email)) {
@@ -25,6 +27,7 @@ const ForgotPassword: React.FC = () => {
         setError('');
 
         try {
+            // Send password reset request to the server
             const response = await fetch(`${import.meta.env.VITE_API_USER_SERVICE}/api/reset-password?email=${encodeURIComponent(email)}`, {
                 method: 'POST',
                 headers: {
@@ -34,10 +37,10 @@ const ForgotPassword: React.FC = () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to request passwored reset');
+                throw new Error(errorData.message || 'Failed to request password reset');
             }
 
-            setSuccessMessage("we've sent a password reset link to your email address. Please check your inbox.");
+            setSuccessMessage("We've sent a password reset link to your email address. Please check your inbox.");
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to request password reset');
         } finally {
