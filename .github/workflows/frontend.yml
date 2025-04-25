@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'frontend/frontend-job-aggregator/**'
+      - '.github/workflows/frontend.yml'
   pull_request:
     branches: [ main ]
     paths:
@@ -13,7 +14,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v3
       
@@ -31,16 +34,9 @@ jobs:
         run: |
           cd frontend/frontend-job-aggregator
           npm run build
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/main'
-        run: |
-          cd frontend/frontend-job-aggregator
-          npm run deploy
+        uses: JamesIves/github-pages-deploy-action@v4
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
