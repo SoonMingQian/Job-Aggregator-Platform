@@ -42,6 +42,10 @@ The system follows a microservices architecture with:
 
 ---
 
+## Prerequisites
+
+This project requires Docker and Docker Compose to run.
+
 ## Setup Instructions
 
 ### Local Development
@@ -51,17 +55,11 @@ The system follows a microservices architecture with:
     git clone https://github.com/SoonMingQian/Job-Aggregator-Platform.git
     cd Job-Aggregator-Platform
 
-2. **Create an .env file**
-    ```bash
-    MYSQL_ROOT_PASSWORD=jobsuser123
-    MYSQL_USER=jobsuser
-    MYSQL_PASSWORD=jobsuser123
-
-3. **Start the services**
+2. **Start the services**
     ```bash
     docker-compose up -d
 
-4. **Run the frontend**
+3. **Run the frontend**
     ```bash
     cd frontend/frontend-job-aggregator
     npm install
@@ -75,18 +73,12 @@ For instructors or reviewers who want to run the complete system quickly:
     git clone https://github.com/SoonMingQian/Job-Aggregator-Platform.git
     cd Job-Aggregator-Platform
 
-2. **Create an .env file**
-    ```bash
-    MYSQL_ROOT_PASSWORD=jobsuser123
-    MYSQL_USER=jobsuser
-    MYSQL_PASSWORD=jobsuser123
-
-3. **Pull and run the containers**
+2. **Pull and run the containers**
     ```bash
     docker-compose -f docker-compose.dist.yaml pull
     docker-compose -f docker-compose.dist.yaml up -d
 
-4. **Access the application**
+3. **Access the application**
 - Live frontend: https://soonmingqian.github.io/Job-Aggregator-Platform/
 - Or run the frontend locally as described above.
 
