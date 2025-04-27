@@ -180,11 +180,16 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
-      - mysql-jobs-storage
-      - redis
+      mysql-jobs-storage:
+        condition: service_healthy 
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - app-network
 
