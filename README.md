@@ -110,7 +110,7 @@ For instructors or reviewers who want to run the complete system quickly:
 | **Scrapers**            | Real-time job collection                 | 3002, 3003 |
 
 ## Demo Video
-[Demo video here]([https://onedrive.live.com/some-video-link](https://atlantictu-my.sharepoint.com/:v:/g/personal/g00438454_atu_ie/EQyqR5hOEKpIt6VWF4pBxOsBZl6qp8MSpy6oxgARl_gsYA?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=RlssQH))
+[Demo video here](https://atlantictu-my.sharepoint.com/:v:/g/personal/g00438454_atu_ie/EQyqR5hOEKpIt6VWF4pBxOsBZl6qp8MSpy6oxgARl_gsYA?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=RlssQH)
 
 ## Acknowledgements
 Developed as part of Final Year Project at Atlantic Technological University
