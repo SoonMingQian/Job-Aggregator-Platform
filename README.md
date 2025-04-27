@@ -51,10 +51,11 @@ The system follows a microservices architecture with:
     git clone https://github.com/SoonMingQian/Job-Aggregator-Platform.git
     cd Job-Aggregator-Platform
 
-2. **Set up environment variables**
+2. **Create an .env file**
     ```bash
-    cp .env.example .env
-    # Edit .env with your database credentials
+    MYSQL_ROOT_PASSWORD=jobsuser123
+    MYSQL_USER=jobsuser
+    MYSQL_PASSWORD=jobsuser123
 
 3. **Start the services**
     ```bash
@@ -74,7 +75,7 @@ For instructors or reviewers who want to run the complete system quickly:
     git clone https://github.com/SoonMingQian/Job-Aggregator-Platform.git
     cd Job-Aggregator-Platform
 
-2. **Create an .emv file**
+2. **Create an .env file**
     ```bash
     MYSQL_ROOT_PASSWORD=jobsuser123
     MYSQL_USER=jobsuser
@@ -109,6 +110,8 @@ For instructors or reviewers who want to run the complete system quickly:
 | **Text Processing**     | CV parsing and analysis                  | 5000       |
 | **Scrapers**            | Real-time job collection                 | 3002, 3003 |
 
+## Demo Video
+[Demo video here](https://atlantictu-my.sharepoint.com/:v:/g/personal/g00438454_atu_ie/EQyqR5hOEKpIt6VWF4pBxOsBZl6qp8MSpy6oxgARl_gsYA?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=RlssQH)
 
 ## Acknowledgements
 Developed as part of Final Year Project at Atlantic Technological University
