@@ -41,8 +41,12 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // For GitHub Pages, we need to use the repository name as the basename
+  const isGitHubPages = window.location.hostname.includes('github.io');
+  const basename = isGitHubPages ? '/Job-Aggregator-Platform' : '/';
+
   return (
-    <Router basename={import.meta.env.BASE_URL}>
+    <Router basename={basename}>
       <AppContent />
     </Router>
   );
