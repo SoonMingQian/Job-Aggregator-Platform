@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import '../styles/LoginPage.css';
 import Cookies from 'js-cookie';
 interface LoginFormData {
@@ -189,7 +189,7 @@ const LoginPage: React.FC = () => {
                             <span className="error-text">{formErrors.password}</span>
                         )}
                         <div className='forgot-password'>
-                            <a href='/forgot-password'>Forgot password?</a>
+                            <Link to="/forgot-password">Forgot password?</Link>
                         </div>
                     </div>
                     {error && (

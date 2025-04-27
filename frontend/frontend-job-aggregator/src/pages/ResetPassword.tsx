@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import '../styles/LoginPage.css'; // Reuse login page styles
 
 const ResetPasswordPage: React.FC = () => {
@@ -204,7 +204,7 @@ const ResetPasswordPage: React.FC = () => {
                             </button>
                         </form>
                         <div className="back-link">
-                            <a href="/login">Back to Login</a>
+                            <Link to="/login">Back to Login</Link>
                         </div>
                     </>
                 )}

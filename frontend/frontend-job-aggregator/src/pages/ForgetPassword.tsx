@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import '../styles/LoginPage.css'; 
 
 const ForgotPassword: React.FC = () => {
@@ -97,7 +97,7 @@ const ForgotPassword: React.FC = () => {
                             </button>
                         </form>
                         <div className="back-link">
-                            <a href="/login">Back to Login</a>
+                            <Link to="/login">Back to Login</Link>
                         </div>
                     </>
                 )}
