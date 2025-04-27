@@ -51,10 +51,11 @@ The system follows a microservices architecture with:
     git clone https://github.com/SoonMingQian/Job-Aggregator-Platform.git
     cd Job-Aggregator-Platform
 
-2. **Set up environment variables**
+2. **Create an .env file**
     ```bash
-    cp .env.example .env
-    # Edit .env with your database credentials
+    MYSQL_ROOT_PASSWORD=jobsuser123
+    MYSQL_USER=jobsuser
+    MYSQL_PASSWORD=jobsuser123
 
 3. **Start the services**
     ```bash
@@ -74,7 +75,7 @@ For instructors or reviewers who want to run the complete system quickly:
     git clone https://github.com/SoonMingQian/Job-Aggregator-Platform.git
     cd Job-Aggregator-Platform
 
-2. **Create an .emv file**
+2. **Create an .env file**
     ```bash
     MYSQL_ROOT_PASSWORD=jobsuser123
     MYSQL_USER=jobsuser
