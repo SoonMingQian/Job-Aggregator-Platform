@@ -34,6 +34,15 @@ jobs:
         run: |
           cd frontend/frontend-job-aggregator
           npm run build
+        env:
+          VITE_API_USER_SERVICE: ${{ secrets.VITE_API_USER_SERVICE }}
+          VITE_API_JOBS_SERVICE: ${{ secrets.VITE_API_JOBS_SERVICE }}
+          VITE_API_MATCHING_SERVICE: ${{ secrets.VITE_API_MATCHING_SERVICE }}
+          VITE_API_TEXT_PROCESSING: ${{ secrets.VITE_API_TEXT_PROCESSING }}
+          VITE_API_IRISHJOBS: ${{ secrets.VITE_API_IRISHJOBS }}
+          VITE_API_JOBSIE: ${{ secrets.VITE_API_JOBSIE }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_REDIRECT_URI: ${{ secrets.VITE_REDIRECT_URI }}
           
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/main'
