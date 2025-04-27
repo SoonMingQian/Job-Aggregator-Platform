@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'; // Add useLocation
 import '../styles/MainPage.css';
 import Pagination from '../components/Pagination';
 import SearchBar from '../components/SearchBar';
@@ -38,6 +38,7 @@ interface SearchHistoryItem {
 const MainPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const location = useLocation(); // Add this line
     const { authFetch } = useAuthFetch();
     const [error, setError] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -52,6 +53,21 @@ const MainPage: React.FC = () => {
     const [sortField, setSortField] = useState<keyof Job | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+    useEffect(() => {
+        // Check if we just completed a Google OAuth login
+        const justLoggedIn = 
+            location.search.includes('login=success') || 
+            location.search.includes('code=') ||  // Google auth returns a code
+            location.state?.loginSuccess || 
+            location.state?.message?.includes('successful');
+        
+        // If we have an auth token after OAuth, dispatch auth change
+        if (justLoggedIn && Cookies.get('authToken')) {
+            console.log('OAuth login detected, updating authentication state');
+            window.dispatchEvent(new Event('authChange'));
+        }
+    }, [location]);
+    
     const handleSort = (field: keyof Job) => {
         // If clicking the same field, toggle direction
         if (field === sortField) {
