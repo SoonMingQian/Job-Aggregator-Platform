@@ -22,7 +22,7 @@ public class MatchingService {
 	@Autowired
 	private RedisService redisService;
 
-	private static final double SIMILARITY_THRESHOLD = 0.6;
+	private static final double SIMILARITY_THRESHOLD = 0.2;
 	private static final Logger logger = LoggerFactory.getLogger(MatchingService.class);
 	
 	@KafkaListener(topics = "matching", groupId = "matching-group")
@@ -73,6 +73,9 @@ public class MatchingService {
 			if (bestMatch >= SIMILARITY_THRESHOLD) {
 				totalMatches += bestMatch;
 				System.out.println("Match found for '" + jobSkill + "' with score: " + bestMatch);
+			} else if (bestMatch >= 0.2) {  // Add partial matches
+				totalMatches += bestMatch * 0.5;  // Count as half value
+				System.out.println("Partial match found for '" + jobSkill + "' with score: " + bestMatch + " (counted as " + (bestMatch * 0.5) + ")");
 			}
 		}
 
